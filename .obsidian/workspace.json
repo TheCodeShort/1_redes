@@ -6,6 +6,7 @@
       {
         "id": "0a7c75c445280633",
         "type": "tabs",
+        "dimension": 48.985680190930786,
         "children": [
           {
             "id": "d3bbd2da85115725",
@@ -26,6 +27,7 @@
       {
         "id": "2da256d96872967f",
         "type": "tabs",
+        "dimension": 51.01431980906921,
         "children": [
           {
             "id": "46e219629dc8e7cb",
@@ -201,10 +203,10 @@
       "bases:Crear nueva base": false
     }
   },
-  "active": "d3bbd2da85115725",
+  "active": "46e219629dc8e7cb",
   "lastOpenFiles": [
-    "3_documentos/2_redes.pdf",
     "3_WAN.md",
+    "3_documentos/2_redes.pdf",
     "1_TCP-IP_y_más.md",
     "Pasted image 20260414152739.png",
     "2_imagen_packet_tracer/3_rstp.png",

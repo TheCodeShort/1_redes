@@ -135,11 +135,83 @@ Según tu documento (especialmente en las páginas 10, 17 y 20), aquí están lo
 				- Si el proveedor no te permite pasar etiquetas VLAN directamente, el router "encapsula" toda tu trama de Ethernet (con su etiqueta de VLAN) dentro de un paquete IP.
 				- Esto hace que el tráfico interno de tus VLANs viaje de forma invisible a través de la red del proveedor (Internet o MPLS).
 				
-	1. **PPP (Point-to-Point Protocol):** Fundamental para conexiones directas entre dos nodos WAN (como el enlace de tu casa al ISP).
-	2. **Frame Relay y ATM:** Son tecnologías de conmutación de paquetes/celdas que mencionas como ejemplos de cómo se transportan datos sobre el nivel físico (p. 20).
-	3. **HDLC (High-Level Data Link Control):** Un protocolo clásico para enlaces punto a punto en routers Cisco.
+	2. **PPP (Point-to-Point Protocol):** Fundamental para conexiones directas entre dos nodos WAN (como el enlace de tu casa al ISP).
+		1. Es como un **"túnel de seguridad y control"** que se construye justo encima del cable físico para que dos routers puedan hablar un mismo idioma, sin importar si el cable es de cobre, fibra o una línea telefónica vieja.
+		
+			1. La Idea: ¿Para qué sirve?
+			
+				Cuando conectas dos routers directamente (enlace punto a punto), necesitas un protocolo que no solo mande bits, sino que también:
+				
+				- **Se identifique:** "¿Eres realmente el router de la sucursal o un impostor?" (**Autenticación**).
+				- **Revise la calidad:** "¿El cable está funcionando bien o hay mucho ruido?" (**Monitoreo**).
+				- **Hable varios idiomas:** ¿Vamos a pasar tráfico IPv4, IPv6 o ambos? (**Multicapa**).
+				
+			2. ¿Cómo funciona? (Los dos "cerebros" de PPP)
 
-3. Conceptos "Maestros" de Capa 2 (Tu documento resalta)
+				PPP no es un solo protocolo, sino la unión de dos sub-protocolos que trabajan en la **Capa 2 (Enlace de Datos)**:
+				
+				- **A. LCP (Link Control Protocol) - "El Establecedor"**
+				
+					Es el encargado de la parte física y el enlace. Sus tareas son:
+					
+					1. **Establecer:** Levanta la conexión.
+					2. **Configurar:** Acuerda el tamaño de los paquetes.
+					3. **Autenticar (Opcional pero clave):** Aquí es donde entran **PAP** (básico) o **CHAP** (seguro).
+					4. **Terminar:** Cierra el enlace de forma ordenada cuando ya no se necesita.
+				
+				- **B. NCP (Network Control Protocol) - "El Traductor"**
+				
+					Una vez que el enlace es seguro, NCP permite que PPP transporte diferentes protocolos de la **Capa 3 (Red)**. Hay un NCP para cada uno:
+					
+					- Si envías tráfico **IPv4**, se usa **IPCP**.
+					- Si envías tráfico **IPv6**, se usa **IPv6CP**.
+					- Esto permite que por el mismo cable viajen datos de distintos tipos simultáneamente.
+					
+				
+			1. Ejemplo 
+				
+				Imagina que tienes un Router en **Bogotá** y otro en **Medellín** conectados por un cable serial.
+				
+				1. **Sin PPP (HDLC):** Conectas el cable, pones las IPs y listo. Si alguien corta el cable y pone su propio router en medio, podría robar datos fácilmente porque no hay validación.
+				2. **Con PPP y CHAP:**
+					- **Paso 1:** El Router de Bogotá le dice al de Medellín: _"Oye, quiero conectar, ¿quién eres?"_.
+					- **Paso 2:** Medellín responde con un código secreto (Challenge).
+					- **Paso 3:** Bogotá procesa ese código con su contraseña y se lo devuelve.
+					- **Paso 4:** Si la contraseña coincide, el **LCP** dice "¡Adelante!" y el **NCP** empieza a pasar tus paquetes de internet (IP).
+
+		**HDLC** (el protocolo por defecto de Cisco) es como un túnel de cristal: ves lo que pasa pero no tiene seguridad. **PPP** es un túnel blindado con guardias en la entrada.
+		
+	3. **Frame Relay y ATM:** Son tecnologías de conmutación de paquetes/celdas que mencionas como ejemplos de cómo se transportan datos sobre el nivel físico.
+		1. **Frame Relay: El estándar eficiente**
+
+			Surgió para conectar oficinas (LAN a LAN) a través de una red WAN de forma económica. 
+			
+			- **La Idea Principal:** A diferencia de una línea dedicada que siempre pagas aunque no la uses, Frame Relay es una red de "acceso compartido". El proveedor te garantiza una velocidad mínima (**CIR - Committed Information Rate**), pero si la red está libre, te permite tener "ráfagas" de mayor velocidad.
+			- **Identificador Clave (DLCI):** En Ethernet usamos MAC, en Frame Relay usamos el **DLCI (Data Link Connection Identifier)**. Es un número que le dice al router por cuál "pasillo virtual" debe enviar el paquete dentro de la nube del proveedor.
+			- **En Packet Tracer:** Se representa con la **Nube (Cloud)**. Entras a la configuración de la nube, vas a la pestaña "Frame Relay" y mapeas los DLCI (ej: del puerto Serial 0 al Serial 1). 
+
+		2. **ATM (Asynchronous Transfer Mode): El perfeccionista**
+		
+			ATM fue diseñado para ser la "superautopista" que transportara voz, video y datos al mismo tiempo con total precisión. 
+			
+			- **La Idea Principal:** Mientras Frame Relay usa paquetes de tamaño variable (tramas), ATM usa **celdas de tamaño fijo** de exactamente 53 bytes.
+			- **¿Por qué celdas fijas?:** Imagina un tren donde todos los vagones miden lo mismo. Es mucho más fácil y rápido de procesar para los equipos, lo que reduce el retraso (jitter), ideal para llamadas de voz o video en tiempo real.
+			- **Identificadores (VPI/VCI):** Usa un sistema de etiquetas de dos niveles (**Virtual Path** y **Virtual Channel**) para guiar las celdas por la red. 
+
+Comparativa: Frame Relay vs. ATM
+
+|Característica|Frame Relay|ATM|
+|---|---|---|
+|**Unidad de datos**|Tramas (Variable)|Celdas (Fijo: 53 bytes)|
+|**Velocidad**|Moderada (hasta 45 Mbps)|Muy alta (Gbps)|
+|**Costo**|Más económico|Más costoso|
+|**Uso ideal**|Datos de oficina (LAN)|Voz, video y backbones|
+
+
+
+1. **HDLC (High-Level Data Link Control):** Un protocolo clásico para enlaces punto a punto en routers Cisco.
+
+2. Conceptos "Maestros" de Capa 2 (Tu documento resalta)
 	
 	Para que hables como un ingeniero, graba estos dos términos que el PDF menciona como funciones de esta capa (p. 10):
 	
@@ -151,3 +223,96 @@ Según tu documento (especialmente en las páginas 10, 17 y 20), aquí están lo
 ---
 
 > **Investigación Extra de Profesor:** En la **Conmutación de Paquetes** que menciona tu tema 3, la Capa 2 es la que añade los **delimitadores** (patrones de bits que marcan el inicio y fin de una trama) para que el receptor sepa dónde termina un mensaje y empieza el siguiente (p. 17).
+
+# 5_Túneles GRE (Generic Routing Encapsulation)
+. La Idea Central: "Encapsulamiento"
+
+GRE es un protocolo de **Capa 3 (Red)**. Su trabajo es envolver un paquete (el pasajero) dentro de otro paquete (el transportador).
+
+- **El problema:** Tienes dos oficinas con IPs privadas (ej. `192.168.1.0`). Internet no sabe qué hacer con esas IPs porque son privadas.
+- **La solución GRE:** El router de la Sede A toma el paquete privado, le pone una "mochila" (encabezado GRE) y luego lo mete en un paquete con IPs públicas que sí pueden viajar por Internet. Al llegar a la Sede B, el router quita la mochila y entrega el paquete original.
+
+---
+
+2. Anatomía de un Paquete GRE (Capa por Capa)
+
+Si usas el **Modo Simulación** en Packet Tracer y abres un PDU que viaja por un túnel GRE, verás algo sorprendente: **¡Dos capas 3!**
+
+1. **Capa 3 Interna (Pasajero):** Contiene la IP privada de tu PC (ej. `192.168.1.5` enviando a `192.168.2.10`).
+2. **Encabezado GRE:** Es una pequeña etiqueta que dice "Lo que hay dentro es un paquete IP".
+3. **Capa 3 Externa (Transporte):** Contiene las IPs públicas de los Routers (las que te da el proveedor de internet). **Esta es la que ve Internet.**
+
+---
+
+3. Características clave que debes saber:
+
+- **Es "Genérico":** Puede transportar casi cualquier cosa (IPv4, IPv6, tráfico de ruteo como OSPF o EIGRP). Por eso es el favorito para conectar sedes.
+- **Sin Cifrado (¡Cuidado!):** GRE por sí solo **no es seguro**. Es como un sobre de cristal; cualquiera en Internet puede ver lo que hay dentro. Por eso, en la vida real, casi siempre se usa **GRE sobre IPsec** (IPsec pone el candado y GRE pone el túnel).
+- **Crea una Interfaz Virtual:** En el router, el túnel aparece como una interfaz física más (`interface Tunnel0`). ¡Puedes hasta ponerle una IP a ese túnel!
+
+# 6_NAT (Network Address Translation)
+
+El **NAT (Network Address Translation)** ==es el "traductor de identidad" de tu red==. Su función principal es tomar las **direcciones IP privadas** de tus dispositivos internos (que no pueden viajar por Internet) y cambiarlas por una **dirección IP pública** que sí puede navegar.
+
+Imagina que tu empresa es un edificio de oficinas:
+
+- **IPs Privadas:** Son las extensiones telefónicas internas (Ej. Ext 101, 102). Puedes llamar de una oficina a otra, pero nadie fuera del edificio puede marcar "101" directamente.
+- **NAT (El Router):** Es la recepcionista. Cuando quieres llamar afuera, ella usa la única línea telefónica pública del edificio para hacer la conexión por ti.
+- **IP Pública:** Es el número de teléfono oficial del edificio que el mundo exterior sí conoce
+
+Tipos de NAT (Cómo "vive" en Packet Tracer)
+
+En el simulador, configurarás NAT en el **Router de Borde** (el que conecta tu LAN con el ISP). Estos son los tres sabores principales:
+
+1. **NAT Estático (Uno a Uno):**
+    - **La Idea:** Asignas una IP pública fija a un servidor interno específico (como tu servidor Web).
+    - **Uso:** Para que gente desde Internet pueda entrar a ver tu página web.
+    - **En Packet Tracer:** Usas el comando `ip nat inside source static [IP_Privada] [IP_Publica]`.
+2. **NAT Dinámico (Muchos a Muchos):**
+    - **La Idea:** Tienes un grupo (pool) de IPs públicas. Cuando una PC quiere salir, el router le "presta" una que esté libre.
+    - **Uso:** Para empresas que tienen varias IPs públicas y quieren repartirlas según la demanda.
+3. **PAT / NAT con Sobrecarga (Muchos a Uno):**
+    - **La Idea:** ¡El más común! Miles de dispositivos salen a Internet usando **una sola IP pública**.
+    - **El Truco:** El router diferencia a cada PC usando **puertos** (ej: PC1 usa el puerto 5001, PC2 el 5002).
+    - **Uso:** Lo que tienes en tu casa ahora mismo. 
+
+---
+
+# 7_Tecnologías WAN avanzadas
+
+Cuando hablamos de **Tecnologías WAN Avanzadas**, nos referimos a cómo las empresas modernas han dejado de depender de simples cables "tirados" de un punto A a un punto B para pasar a redes inteligentes, virtuales y altamente automatizadas.
+
+En el contexto de tu documento y del modelo OSI, esto se sitúa principalmente en las **Capas 2 y 3**, pero con una fuerte inyección de **software**. Aquí tienes el desglose a fondo:
+
+1. MPLS (Multi-Protocol Label Switching) - "El sistema de etiquetas"
+
+Es la tecnología reina de las WAN corporativas desde hace años.
+
+- **La Idea:** En lugar de que cada router en el camino tenga que leer toda la dirección IP de destino (Capa 3) y buscar en una tabla gigante, MPLS le pone una **"etiqueta"** al paquete al entrar a la red del proveedor (Capa 2.5).
+- **Por qué es avanzado:** Los routers internos del proveedor solo leen la etiqueta (que es mucho más rápido) y "disparan" el paquete al siguiente punto.
+- **En Packet Tracer:** Aunque el simulador es limitado para configurar el "núcleo" de MPLS, puedes ver su efecto: permite crear **VPNs de Capa 3**, donde diferentes empresas usan la misma red del proveedor pero están totalmente aisladas entre sí.
+
+2. SD-WAN (Software-Defined WAN) - "La inteligencia"
+
+Esta es la evolución actual. Antes, si tenías un enlace de fibra (caro) y uno de internet barato, el router no sabía muy bien cómo aprovecharlos.
+
+- **La Idea:** Un cerebro central (controlador) decide por dónde enviar el tráfico basándose en la aplicación.
+- **Ejemplo Masivo:**
+    - Si detecta que la **Llamada de Zoom** (tráfico crítico) tiene retraso en el enlace A, la mueve instantáneamente al enlace B sin que se corte.
+    - El **tráfico de Facebook** de los empleados lo manda por el internet más barato.
+- **Modelo OSI:** Aquí la Capa 7 (Aplicación) le dice a la Capa 3 (Red) qué camino tomar.
+
+3. Banda Ancha por Fibra y Satélite (GPON y Starlink)
+
+Las WAN avanzadas ya no solo usan cables seriales viejos.
+
+- **GPON (Gigabit Passive Optical Network):** Es lo que lleva fibra a la oficina. Usa una sola fibra para muchos usuarios mediante división de tiempo y luz.
+- **Satélite de baja órbita (LEO):** Como Starlink. En el modelo OSI, la **Capa 1 (Física)** cambia de cables a ondas de radio espaciales, pero manteniendo latencias bajas que permiten usar VPNs y VoIP sin problemas.
+
+4. Resumen de Diferencias Clave
+
+| Tecnología         | Enfoque Principal      | Ventaja de "Experto"                                                    |
+| ------------------ | ---------------------- | ----------------------------------------------------------------------- |
+| **MPLS**           | Velocidad y Privacidad | El proveedor garantiza el camino (SLA).                                 |
+| **SD-WAN**         | Agilidad y Costo       | Puedes usar internet común como si fuera una red privada cara.          |
+| **Metro Ethernet** | Simplicidad            | Conectas tus sedes como si estuvieran en el mismo switch de la oficina. |
