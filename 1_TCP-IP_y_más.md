@@ -367,6 +367,7 @@ puertos donde conectas dispositivos finales (PCs, impresoras, servidores). Sirve
 - **PortFast:** Es para que los usuarios no esperen (pasa a verde instantáneo).
 - **BPDU Guard:** Es el guardaespaldas que vigila que ese puerto de usuario **siga siendo de usuario** y no se convierta en una entrada para otros switches.
 # 13_Subneting
+### **FLSM (Máscara de Longitud Fija):** calculo impreciso
 el **Subnetting** es el cálculo para dividir esa "calle" (red) en "barrios" (segmentos) más pequeños.
 
 primero tenemos
@@ -447,3 +448,56 @@ Con esto estamos diciendo que tan grande es la calle y cuantas casas pueden esta
 				Ahora, solo suma todos los "1" (los bits encendidos):  
 				**8 + 8 + 8 + 2 = 26**
 				Por eso se pone **/26**. Le dice a cualquier técnico o equipo: _"De los 32 bits totales, los primeros 26 están bloqueados para la red y los 6 restantes son para los equipos"_.
+
+### **VLSM (Variable Length Subnet Mask):**
+
+- Esto te permite darle a Gerencia una red pequeña (ej. una `/29` para 6 personas) y a Ventas una red grande (una `/25`).
+
+-**Cómo hacerlo "Perfecto" (La Regla del 20-80)**
+- 
+	Para que no sea impreciso, un experto hace esto:
+	
+	1. **Censo actual:** Cuenta los puertos físicos necesarios hoy (PCs, Impresoras, Teléfonos IP).
+	2. **Proyección a 2 años:** Suma un **20% o 30%** de crecimiento.
+	3. **Subneteo a medida:** Si el total te da 40 puertos, no calculas para 126, calculas para una red de **62 hosts (máscara `/26`)**.
+	4. **Compra modular:** Compras un switch de 48 puertos. Tienes los 40 de hoy y te sobran 8 para crecer sin comprar otro switch de inmediato.
+	
+ - Si solo tienes **5 PCs por piso**, usar una red de 126 puertos (como la anterior) es un desperdicio total. Para que el cálculo sea "perfecto" y profesional, usaremos **VLSM** (Máscara de Longitud Variable).
+
+### paso a paso 
+
+Paso 1: Analizar la necesidad real
+
+- **Piso 1 (VLAN 1):** 5 PCs + 1 Gateway (Router) = **6 IPs necesarias**.
+- **Piso 2 (VLAN 2):** 5 PCs + 1 Gateway (Router) = **6 IPs necesarias**.
+
+- **Paso 2: Buscar la potencia de 2 que encaje**
+
+- Necesitamos un número que cubra 6 IPs.
+
+	1. (Muy pequeño, no caben).$$2^2 =4$$
+
+    2. (**¡Este es!** Nos da 8 IPs totales).$$2^3=8$$
+
+- **Paso 3: Calcular la nueva máscara**
+	- Si usamos **3 bits** para los equipos (porque 2³ = 8), nos sobran **5 bits** para la máscara (8 - 3 = 5).
+
+	- Sumamos los valores de esos 5 bits: 128 + 64 + 32 + 16 + 8 = 248
+
+| Octeto              | 0     0   0   0  0  0    0    0 |
+| ------------------- | ------------------------------- |
+| **bits del octeto** | 128 64 32 16 8 4  2   1         |
+
+- Tu máscara perfecta es **255.255.255.248** (o en formato corto: **`/29`**).
+
+- **Paso 4: Calcular el salto (El número mágico)**
+- $$256-248=8$$
+
+	Tus redes ahora saltarán de 8 en 8. ¡Súper ajustado y eficiente!
+
+### Cuadro de Subnetting "Perfecto" (Ahorro Máximo)
+
+|VLAN|ID de Red|Gateway|Rango de PCs (5 equipos)|Broadcast|
+|---|---|---|---|---|
+|**Piso 1**|192.168.1.**0**|192.168.1.**1**|192.168.1.**2** - 192.168.1.**6**|192.168.1.**7**|
+|**Piso 2**|192.168.1.**8**|192.168.1.**9**|192.168.1.**10** - 192.168.1.**14**|192.168.1.**15**|
