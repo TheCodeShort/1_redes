@@ -6,7 +6,6 @@
       {
         "id": "2da256d96872967f",
         "type": "tabs",
-        "dimension": 99.99999999999999,
         "children": [
           {
             "id": "46e219629dc8e7cb",
@@ -14,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "1_TCP-IP_y_más.md",
+                "file": "2_Packet Tracer.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "1_TCP-IP_y_más"
+              "title": "2_Packet Tracer"
             }
           }
         ]
@@ -186,8 +185,8 @@
   },
   "active": "46e219629dc8e7cb",
   "lastOpenFiles": [
-    "2_Packet Tracer.md",
     "1_TCP-IP_y_más.md",
+    "2_Packet Tracer.md",
     "3_documentos/2_redes.pdf",
     "3_WAN.md",
     "Pasted image 20260414152739.png",

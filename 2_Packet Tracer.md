@@ -66,7 +66,7 @@
 			3. `Router(config-if)#` (Nivel 3)
 			4. Si usas **`end`**: Vas de 3 a 1 de un solo salto. (Usas el ascensor).
 			
-	8. **Switch (VLANS):** 
+	8. ==**Switch (VLANS):**== 
 		- configuracion  
 			- **Crear una VLANS**
 				- Switch> enable
@@ -92,7 +92,8 @@
 			- **Asignar el trunk y VLANS nativa, el protocolo dot1Q** 
 				- el router no se le asigna una VLNS o por equivocación meter una VLNS la idea es donde se conecto el router hacer esto **_Inter-VLAN Routing_**
 				
-					- Switch(config)# **interface fa0/1** => el 0/1 es el puerto al que vamos a asignar así que hay que tener en cuenta para no configurar mal 
+					- Switch(config)# **interface fa0/1** => el 0/1 es el puerto al que vamos a asignar así que hay que tener en cuenta para no configurar mal
+
 					- Switch(config-if)# **switchport mode trunk**
 					
 				- **VLANs nativa** - Como todo el mundo sabe que la VLAN 1 es la de fábrica, los hackers suelen usarla para intentar entrar a los switches, - Al cambiarla a una que tú inventes (por ejemplo, la 99 o la 999) y que no se use para nada más, "escondes" ese tráfico sin etiqueta.
@@ -129,7 +130,7 @@
 					- **PC en VLAN 10:** IP `192.168.10.x` / Gateway: `192.168.10.1`
 					- **Laptop en VLAN 20:** IP `192.168.20.x` / Gateway: `192.168.20.1`
 	
-	10. **ACL (Access Control Lists o Listas de Control de Acceso:** Al tener varias VLAS no controlamos el acceso a aras importantes esto evita el acceso de VENTAS a GERENCIA
+	9. **ACL (Access Control Lists o Listas de Control de Acceso:** Al tener varias VLAS no controlamos el acceso a aras importantes esto evita el acceso de VENTAS a GERENCIA
 			- `access-list 101 permit ip host 192.168.50.10 192.168.30.0 0.0.0.255`
 			
 		1. El Origen (`host 192.168.50.10`)
@@ -152,7 +153,7 @@
 			
 			- Entonces, `192.168.30.0 0.0.0.255` significa: _"Cualquier IP que empiece con 192.168.30, no importa si termina en .5, .10 o .200"_.
 			- 
-     11. **Configuración de EtherChannel:** para cuando tenemos un switch con puertos libre  podemos mejorar la velocidad de los datos usando el comando de unos de esto protocolos **PAgP**, **LACP** y **Vía Modo ON** y por ultimo se ponen como trunk
+     10. **Configuración de EtherChannel:** para cuando tenemos un switch con puertos libre  podemos mejorar la velocidad de los datos usando el comando de unos de esto protocolos **PAgP**, **LACP** y **Vía Modo ON** y por ultimo se ponen como trunk
 		 
 		 - **PAgP**, **LACP** y **Vía Modo ON** son los protocolos (los "idiomas") que usa para ponerse de acuerdo
 			 1. **PAgP (Port Aggregation Protocol)**
@@ -198,7 +199,8 @@
 	
 	14. **`no shutdown`**: ¡El más importante! Por defecto, los puertos de los routers Cisco vienen "apagados" (en rojo). Este comando los **enciende** esto se ejecuta en el nivel **`Router(config-if)#`**
 	
-	15. **`copy running-config startup-config`**: Guarda los cambios realizados en la memoria persistente del router  le dice al equipo: _"Toma todo lo que acabo de configurar en la RAM y cópialo en el disco duro para que no se borre"_ pero también se puede evitar  escribir todo eso es muy largo. En Cisco (y en Packet Tracer) puedes usar la versión ultra resumida que hace exactamente lo mismo: Solo escribe: **`wr`** (que significa _write_) y dale a **Enter** también tener encuentra que este código se puede ejecutar en el nivel de **(#)** también se puede usar **`(config-if)# do write`** en caso que no estemos en el nivel de **(#)**
+	15. ==**`copy running-config startup-config`**:== Guarda los cambios realizados en la memoria persistente del router  le dice al equipo: _"Toma todo lo que acabo de configurar en la RAM y cópialo en el disco duro para que no se borre"_ pero también se puede evitar  escribir todo eso es muy largo. En Cisco (y en Packet Tracer) anivel **Switch ># copy**
+	16. puedes usar la versión ultra resumida que hace exactamente lo mismo: Solo escribe: **`wr`** (que significa _write_) y dale a **Enter** también tener encuentra que este código se puede ejecutar en el nivel de **(#)** también se puede usar **`(config-if)# do write`** en caso que no estemos en el nivel de **(#)**
 # 2_ayudas 
 1. cuando se escribe el comando mal el quipo empieza a buscar otra cosa y para evitar demoras se usa el comando **`Ctrl` + `Shift` + `6`**
 		La solución definitiva (Comando mágico)

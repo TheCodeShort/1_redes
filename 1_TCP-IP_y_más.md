@@ -480,7 +480,7 @@ Paso 1: Analizar la necesidad real
     2. (**¡Este es!** Nos da 8 IPs totales).$$2^3=8$$
 
 - **Paso 3: Calcular la nueva máscara**
-	- Si usamos **3 bits** para los equipos (porque 2³ = 8), nos sobran **5 bits** para la máscara (8 - 3 = 5).
+	- Si usamos **3 bits** para los equipos (porque 2³ = 8), nos sobran **5 bits** para la máscara (8 - 3 = 5bits de red).
 
 	- Sumamos los valores de esos 5 bits: 128 + 64 + 32 + 16 + 8 = 248
 
@@ -497,7 +497,7 @@ Paso 1: Analizar la necesidad real
 
 ### Cuadro de Subnetting "Perfecto" (Ahorro Máximo)
 
-|VLAN|ID de Red|Gateway|Rango de PCs (5 equipos)|Broadcast|
-|---|---|---|---|---|
-|**Piso 1**|192.168.1.**0**|192.168.1.**1**|192.168.1.**2** - 192.168.1.**6**|192.168.1.**7**|
-|**Piso 2**|192.168.1.**8**|192.168.1.**9**|192.168.1.**10** - 192.168.1.**14**|192.168.1.**15**|
+| VLAN       | ID de Red       | Gateway         | Rango de PCs (5 equipos)            | Broadcast        |
+| ---------- | --------------- | --------------- | ----------------------------------- | ---------------- |
+| **Piso 1** | 192.168.1.**0** | 192.168.1.**1** | 192.168.1.**2** - 192.168.1.**6**   | 192.168.1.**7**  |
+| **Piso 2** | 192.168.1.**8** | 192.168.1.**9** | 192.168.1.**10** - 192.168.1.**14** | 192.168.1.**15** |
