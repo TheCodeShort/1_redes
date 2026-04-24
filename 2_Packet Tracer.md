@@ -87,9 +87,9 @@
 						
 					2. le asignamos la VLANS 1 que por defectos todos están 
 						- `Switch(config)# interface fastEthernet [numero del puerto]`
-						- `Switch(config-if)#`switchport access vlan 1``
+						- `Switch(config-if)#`switchport access vlan [numero de VLANS]``
 		
-			- **Asignar el trunk y VLANS nativa, el protocolo dot1Q** 
+			- ==**Asignar el trunk y VLANS nativa, el protocolo dot1Q**== 
 				- el router no se le asigna una VLNS o por equivocación meter una VLNS la idea es donde se conecto el router hacer esto **_Inter-VLAN Routing_**
 				
 					- Switch(config)# **interface fa0/1** => el 0/1 es el puerto al que vamos a asignar así que hay que tener en cuenta para no configurar mal
@@ -104,9 +104,9 @@
 					- `switchport trunk native vlan 99`
 					
 				- cuando ya se configure el puerto ahora hay que hacerlo en el router esto se llama **_Router-on-a-Stick_** un solo cable (el "stick") lleva todo el tráfico de muchas VLANs.
-				- como no se puede poner dos IP al mismo puerto físico **sub-interfaces** 
+				- como no se puede poner dos IP al mismo puerto físico se crea **sub-interfaces** 
 		
-					- Router(config)# **interface gig0/0.10**
+					- ==Router(config)# **interface gig0/0.10**==
 						- se crea  **sub-interfaces** el numero **/0.10** es el numero que varia y donde decimos vamos a entrar a este fragmento del puerto original **gig0/0** se crean las de las VLANS **0/0.10, 0/0.20, 0/0.30**
 					
 					- Router(config-subif)# **encapsulation dot1Q 10** 
