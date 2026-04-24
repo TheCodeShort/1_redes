@@ -6,6 +6,7 @@
       {
         "id": "2da256d96872967f",
         "type": "tabs",
+        "dimension": 50.257069408740364,
         "children": [
           {
             "id": "46e219629dc8e7cb",
@@ -13,12 +14,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "1_TCP-IP_y_más.md",
+                "file": "3_WAN.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "1_TCP-IP_y_más"
+              "title": "3_WAN"
             }
           }
         ]
@@ -26,6 +27,7 @@
       {
         "id": "04396fdb7759d3fb",
         "type": "tabs",
+        "dimension": 49.742930591259636,
         "children": [
           {
             "id": "cfa0bdb912968d69",
@@ -96,7 +98,8 @@
       }
     ],
     "direction": "horizontal",
-    "width": 200
+    "width": 200,
+    "collapsed": true
   },
   "right": {
     "id": "8b4388dbf8788f6f",
@@ -204,9 +207,9 @@
   "active": "46e219629dc8e7cb",
   "lastOpenFiles": [
     "3_documentos/2_redes.pdf",
+    "3_WAN.md",
     "1_TCP-IP_y_más.md",
     "2_Packet Tracer.md",
-    "3_WAN.md",
     "Pasted image 20260414152739.png",
     "2_imagen_packet_tracer/3_rstp.png",
     "2_imagen_packet_tracer/2_stp-pvst_pre-vlan.png",
