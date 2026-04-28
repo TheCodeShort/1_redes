@@ -316,3 +316,53 @@ Las WAN avanzadas ya no solo usan cables seriales viejos.
 | **MPLS**           | Velocidad y Privacidad | El proveedor garantiza el camino (SLA).                                 |
 | **SD-WAN**         | Agilidad y Costo       | Puedes usar internet común como si fuera una red privada cara.          |
 | **Metro Ethernet** | Simplicidad            | Conectas tus sedes como si estuvieran en el mismo switch de la oficina. |
+<<<<<<< HEAD
+=======
+
+# 8_QoS
+#### El "Tráfico VIP" de la red
+
+La Calidad de Servicio (QoS) es un conjunto de mecanismos técnicos que permiten gestionar, priorizar y garantizar el rendimiento del tráfico de red en función de sus requerimientos específicos. Su objetivo principal es asegurar la entrega adecuada de servicios críticos (como voz, video y datos sensibles a la latencia), incluso en condiciones de congestión.
+
+QoS clasifica, marca, filtra y programa el tráfico, controlando así el uso del ancho de banda y reduciendo problemas graves como el retardo, la variación del retardo (jitter) y la pérdida de paquetes
+
+QoS no crea más ancho de banda (no hace el "tubo" más grande), sino que **administra el que ya tienes**. Su objetivo es dar un trato preferencial a ciertos tipos de datos.
+
+**Ejemplo masivo:** Imagina una autopista con una ambulancia (Voz sobre IP) y un camión de basura (descarga de archivos). Sin QoS, la ambulancia puede quedar atrapada detrás del camión. Con QoS, creas un **carril preferencial** para la ambulancia.
+
+1. **Los enemigos de la red**
+	- **Ancho de banda (Bandwidth):** Es la capacidad de transmisión del canal.
+    
+	- **Retardo (Latency):** Es el tiempo que tarda un paquete en llegar al destino.
+	    
+	- **Jitter:** Es la variación en el retardo de paquetes sucesivos. _(Ejemplo: Si un paquete de tu llamada de voz tarda 10ms en llegar y el siguiente tarda 80ms, esa inestabilidad robótica en el audio es el Jitter)._
+	    
+	- **Pérdida de paquetes:** Es el porcentaje de paquetes que no llegan correctamente.
+
+#### **Modelos de QoS (¿Cómo aplicamos las reglas?):**
+
+- **Best-Effort:** Es el modelo por defecto donde no hay QoS; todos los paquetes tienen el mismo tratamiento e intentan llegar "haciendo su mejor esfuerzo".
+    
+- **IntServ (Integrated Services):** Requiere una reserva explícita de recursos utilizando el protocolo RSVP. Proporciona garantías firmes de calidad, pero tiene un defecto: es poco escalable.
+    
+- **DiffServ (Differentiated Services):** Es el rey actual. Clasifica y marca los paquetes con etiquetas DSCP. Permite dar un tratamiento preferencial sin tener que reservar recursos por flujo de datos. Al ser muy eficiente, es escalable y usado ampliamente en redes empresariales y proveedoras.
+
+**Clasificación y Marcado (Poniendo las etiquetas):** Para que los routers sepan qué paquete es más importante, hay que etiquetarlos.
+
+- **En Capa 2 (Switches):** Se usan los campos **CoS (Class of Service)** en las tramas Ethernet mediante el estándar 802.1p.
+    
+- **En Capa 3 (Routers):** Se usa el campo **DSCP** directamente en el encabezado IP para la priorización.
+    
+- **Técnicas de apoyo:** Para identificar el tráfico se usan ACLs (Listas de Control de Acceso), NBAR (análisis profundo de aplicaciones) y MQC (Modular QoS CLI).
+
+### **Administración de Congestión (Gestión de las colas):** 
+Cuando el router se llena, debe decidir a quién atiende primero.
+
+- **FIFO (First In, First Out):** Sin prioridad, los paquetes se atienden por estricto orden de llegada.
+    
+- **WFQ (Weighted Fair Queuing):** Asigna un "peso" a las colas por tipo de tráfico.
+    
+- **CBWFQ (Class-Based Weighted Fair Queuing):** Es más avanzado, asigna un ancho de banda fijo a diferentes clases de tráfico.
+    
+- **Policing y Shaping:** Son dos técnicas vitales que limitan o suavizan el tráfico excedente para evitar la congestión.
+>>>>>>> 56ca53152123cc4257851602e4dd1101c44d7404
