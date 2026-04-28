@@ -88,6 +88,41 @@
 					2. le asignamos la VLANS 1 que por defectos todos están 
 						- `Switch(config)# interface fastEthernet [numero del puerto]`
 						- `Switch(config-if)#`switchport access vlan [numero de VLANS]``
+						
+				-  ==**Blindaje de Gestión y Cambio de VLAN Nativa (VLAN 99)**==
+					- Separar el tráfico de administración del tráfico de los usuarios para evitar ataques de **VLAN Hopping** y permitir el acceso remoto seguro a los equipos de red desde un segmento aislado.
+
+					- **Fase 1: Creación de la Identidad**
+						- S1(config)# vlan 99
+						- S1(config-vlan)# name NATIVE
+							- **¿Qué hace?**: Crea la "calle" número 99 y le pone nombre.
+							- **Seguridad**: Al no usar la VLAN 1 (la de fábrica), ya estamos dejando de ser un blanco fácil para herramientas automáticas de hackeo.
+							
+					- **Fase 2: Asegurar la "Autopista" (Trunk)**
+						- S1(config)# interface fastEthernet 0/1
+						- S1(config-if)# switchport trunk native vlan 99
+							- **¿Qué hace?**: Define que en ese cable troncal, todo el tráfico que **no tenga etiqueta** (tráfico huérfano o de control) se mueva por la VLAN 99.
+							- **Seguridad**: Obliga a que cualquier dato que viaje por la troncal sea tratado bajo las reglas de la VLAN 99, anulando la vulnerabilidad de la VLAN 1.
+							
+					- **Fase 3: Configuración del "Cerebro" del Switch (SVI)**
+						- S1(config)# interface vlan 99
+						- S1(config-if)# ip address 192.168.99.3 255.255.255.0
+						- S1(config-if)# no shutdown
+							- **¿Qué hace?**: Le asigna una "tarjeta de red virtual" al switch con una IP específica dentro de la red de gestión.
+							- **Objetivo**: Es la dirección IP que escribirás en programas como PuTTY o para hacerle `ping` al switch desde tu oficina técnica.
+					
+					- **Fase 4: La Salida al Mundo (Puerta de Enlace)**
+						- S1(config)# ip default-gateway 192.168.99.1
+							- **¿Qué hace?**: Le dice al switch: "Si necesitas responderle a un técnico que está en otra red (ej. VLAN 10), envía la respuesta a través de esta IP (el Router)".
+							- **Importancia**: Sin esto, el switch se queda "sordo" para cualquier conexión que no venga de su propia red local.
+							
+					- **Fase 5: Para que el router reconozca la VLAN 99**
+						- R1(config)#interface fastEthernet 0/0.99
+						- R1(config-subif)#encapsulation dot1Q 99 native
+						- R1(config-subif)#ip address 192.168.99.1 255.255.255.0 
+						
+
+
 		
 			- ==**Asignar el trunk y VLANS nativa, el protocolo dot1Q**== 
 				- el router no se le asigna una VLNS o por equivocación meter una VLNS la idea es donde se conecto el router hacer esto **_Inter-VLAN Routing_**
