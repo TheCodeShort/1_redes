@@ -1,48 +1,20 @@
 {
   "main": {
-    "id": "d757f1f820ae45d7",
+    "id": "43f2afe00a6af01f",
     "type": "split",
     "children": [
       {
-        "id": "c000554d72ba7309",
+        "id": "28e215af3b4675ba",
         "type": "tabs",
-        "dimension": 50.257069408740364,
         "children": [
           {
-<<<<<<< HEAD
-            "id": "7f49edc47c02bb51",
-=======
-            "id": "46e219629dc8e7cb",
+            "id": "abae1ca8c69312bd",
             "type": "leaf",
             "state": {
-              "type": "markdown",
-              "state": {
-                "file": "3_WAN.md",
-                "mode": "source",
-                "source": false
-              },
+              "type": "empty",
+              "state": {},
               "icon": "lucide-file",
-              "title": "3_WAN"
-            }
-          }
-        ]
-      },
-      {
-        "id": "04396fdb7759d3fb",
-        "type": "tabs",
-        "dimension": 49.742930591259636,
-        "children": [
-          {
-            "id": "cfa0bdb912968d69",
->>>>>>> 56ca53152123cc4257851602e4dd1101c44d7404
-            "type": "leaf",
-            "state": {
-              "type": "pdf",
-              "state": {
-                "file": "3_documentos/2_redes.pdf"
-              },
-              "icon": "lucide-file-text",
-              "title": "2_redes"
+              "title": "Nueva pestaña"
             }
           }
         ]
@@ -51,15 +23,15 @@
     "direction": "vertical"
   },
   "left": {
-    "id": "40788fbe417ba119",
+    "id": "8d1801d8c15e183e",
     "type": "split",
     "children": [
       {
-        "id": "9af600a3593b8323",
+        "id": "d9b404376e6da3fe",
         "type": "tabs",
         "children": [
           {
-            "id": "66b55eb93f569602",
+            "id": "77dd9a0f851cc611",
             "type": "leaf",
             "state": {
               "type": "file-explorer",
@@ -72,7 +44,7 @@
             }
           },
           {
-            "id": "d1342eccd034891e",
+            "id": "6da3fa39f41b99ae",
             "type": "leaf",
             "state": {
               "type": "search",
@@ -89,7 +61,7 @@
             }
           },
           {
-            "id": "b1b36326f8558769",
+            "id": "a2709aff41149b0d",
             "type": "leaf",
             "state": {
               "type": "bookmarks",
@@ -102,24 +74,22 @@
       }
     ],
     "direction": "horizontal",
-    "width": 200,
-    "collapsed": true
+    "width": 300
   },
   "right": {
-    "id": "8b4388dbf8788f6f",
+    "id": "cf0de204c1717d78",
     "type": "split",
     "children": [
       {
-        "id": "ae3c25cc83285079",
+        "id": "14d6b75b9c5a3bb3",
         "type": "tabs",
         "children": [
           {
-            "id": "830cf8eda2171578",
+            "id": "b28a634392f76dc4",
             "type": "leaf",
             "state": {
               "type": "backlink",
               "state": {
-                "file": "2_redes.pdf",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -129,25 +99,24 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Enlaces entrantes de 2_redes"
+              "title": "Enlaces entrantes"
             }
           },
           {
-            "id": "0c92132b2318e2d0",
+            "id": "e082a175d226ba8a",
             "type": "leaf",
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "2_redes.pdf",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "Enlaces salientes de 2_redes"
+              "title": "Enlaces salientes"
             }
           },
           {
-            "id": "ff5233a7d96a408a",
+            "id": "99d973445b37e891",
             "type": "leaf",
             "state": {
               "type": "tag",
@@ -162,7 +131,7 @@
             }
           },
           {
-            "id": "06c7ea5f2fd43b62",
+            "id": "2a9cbd6f4fa5e75f",
             "type": "leaf",
             "state": {
               "type": "all-properties",
@@ -176,18 +145,17 @@
             }
           },
           {
-            "id": "f474d7fd3039686f",
+            "id": "b3b30170a35a203e",
             "type": "leaf",
             "state": {
               "type": "outline",
               "state": {
-                "file": "2_redes.pdf",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Esquema de 2_redes"
+              "title": "Esquema"
             }
           }
         ]
@@ -208,32 +176,6 @@
       "bases:Crear nueva base": false
     }
   },
-  "active": "7f49edc47c02bb51",
-  "lastOpenFiles": [
-<<<<<<< HEAD
-    "Sin título.base",
-    "2026-04-28.md",
-    "3_WAN.md",
-    "4_IPv 6.md",
-    "3_documentos/2_redes.pdf",
-    "2_Packet Tracer.md",
-    "1_TCP-IP_y_más.md",
-=======
-    "3_documentos/2_redes.pdf",
-    "3_WAN.md",
-    "1_TCP-IP_y_más.md",
-    "2_Packet Tracer.md",
->>>>>>> 56ca53152123cc4257851602e4dd1101c44d7404
-    "Pasted image 20260414152739.png",
-    "2_imagen_packet_tracer/3_rstp.png",
-    "2_imagen_packet_tracer/2_stp-pvst_pre-vlan.png",
-    "2_imagen_packet_tracer/1_ethernChanel.png",
-    "Pasted image 20260413135528.png",
-    "Pasted image 20260413135257.png",
-    "1_imagen/2_vlans.png",
-    "3_documentos",
-    "2_imagen_packet_tracer",
-    "1_imagen/1_tcp-ip.png",
-    "Bienvenido.md"
-  ]
+  "active": "abae1ca8c69312bd",
+  "lastOpenFiles": []
 }
