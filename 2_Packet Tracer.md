@@ -76,9 +76,9 @@
 				- Switch(config-vlan)# exit
 				
 			- **Asignar una VLANS a los puertos** 	
-				- Switch(config)# **interface range fastEthernet 0/2 - 10**
+				- `Switch(config)# interface range fastEthernet 0/2 - 10`
 				
-				- Switch(config-if-range)# **switchport access vlan 20**=> el numero 20 es la VLAN que ya configuramos puede ser la 20 o la 10 si no se crea la VLANS nos saldrá este paso al asignarle 
+				- `Switch(config-if-range)# switchport access vlan [numero de VLANS]` => el numero es la VLAN que ya configuramos puede ser la 20 o la 10 si no se crea la VLANS nos saldrá este paso al asignarle 
 		
 				- si nos equivocamos en un puerto lo corregimos de dos maneras
 					1. lo sacamos de la VLANS que ya creamos
@@ -93,50 +93,142 @@
 					- Separar el tráfico de administración del tráfico de los usuarios para evitar ataques de **VLAN Hopping** y permitir el acceso remoto seguro a los equipos de red desde un segmento aislado.
 
 					- **Fase 1: Creación de la Identidad**
-						- S1(config)# vlan 99
-						- S1(config-vlan)# name NATIVE
+						- `S1(config)# vlan 99`
+						- `S1(config-vlan)# name NATIVE
 							- **¿Qué hace?**: Crea la "calle" número 99 y le pone nombre.
 							- **Seguridad**: Al no usar la VLAN 1 (la de fábrica), ya estamos dejando de ser un blanco fácil para herramientas automáticas de hackeo.
 							
 					- **Fase 2: Asegurar la "Autopista" (Trunk)**
-						- S1(config)# interface fastEthernet 0/1
-						- S1(config-if)# switchport trunk native vlan 99
+						- `S1(config)# interface fastEthernet [numero del puerto]`
+						- `S1(config-if)# switchport trunk native vlan 99`
 							- **¿Qué hace?**: Define que en ese cable troncal, todo el tráfico que **no tenga etiqueta** (tráfico huérfano o de control) se mueva por la VLAN 99.
 							- **Seguridad**: Obliga a que cualquier dato que viaje por la troncal sea tratado bajo las reglas de la VLAN 99, anulando la vulnerabilidad de la VLAN 1.
 							
-					- **Fase 3: Configuración del "Cerebro" del Switch (SVI)**
-						- S1(config)# interface vlan 99
+					- **Fase 3: Para que el router reconozca la VLAN 99**
+						- R1(config)#interface fastEthernet 0/0.99
+						- R1(config-subif)#encapsulation dot1Q 99 `native`
+						- R1(config-subif)#ip address 192.168.99.1 255.255.255.0 
+						
+			- ==Asignar una IP a un equipo (Switch, impresora, etc
+		
+				-  ==**Fase 1: Configuración del "Cerebro" del Switch (SVI)**==
+						- S1(config)# interface vlan [numero de la ]
 						- S1(config-if)# ip address 192.168.99.3 255.255.255.0
 						- S1(config-if)# no shutdown
 							- **¿Qué hace?**: Le asigna una "tarjeta de red virtual" al switch con una IP específica dentro de la red de gestión.
 							- **Objetivo**: Es la dirección IP que escribirás en programas como PuTTY o para hacerle `ping` al switch desde tu oficina técnica.
 					
-					- **Fase 4: La Salida al Mundo (Puerta de Enlace)**
+					- **Fase 2: La Salida al Mundo (Puerta de Enlace)**
 						- S1(config)# ip default-gateway 192.168.99.1
 							- **¿Qué hace?**: Le dice al switch: "Si necesitas responderle a un técnico que está en otra red (ej. VLAN 10), envía la respuesta a través de esta IP (el Router)".
-							- **Importancia**: Sin esto, el switch se queda "sordo" para cualquier conexión que no venga de su propia red local.
-							
-					- **Fase 5: Para que el router reconozca la VLAN 99**
-						- R1(config)#interface fastEthernet 0/0.99
-						- R1(config-subif)#encapsulation dot1Q 99 native
-						- R1(config-subif)#ip address 192.168.99.1 255.255.255.0 
+							- **Importancia**: Sin esto, el switch se queda "sordo" para cualquier conexión que no venga de su propia red local
 						
-
-
-		
-			- ==**Asignar el trunk y VLANS nativa, el protocolo dot1Q**== 
-				- el router no se le asigna una VLNS o por equivocación meter una VLNS la idea es donde se conecto el router hacer esto **_Inter-VLAN Routing_**
+			- ==Configurar aparatos para acceder a distancia==
+				- Configurar las líneas virtuales (VTY)
 				
-					- Switch(config)# **interface fa0/1** => el 0/1 es el puerto al que vamos a asignar así que hay que tener en cuenta para no configurar mal
+					- **Switch(config)# line vty 0 4**
+						- **¿Qué significa VTY?** Significa _Virtual Teletype_. Son puertos "invisibles" o lógicos. A diferencia del puerto físico de consola (donde conectas el cable celeste), estos puertos solo existen en la red.
+						- **¿Para qué el `0 4`?** Le estás diciendo al switch: "Quiero configurar desde la línea 0 hasta la 4". Esto suma **5 sesiones simultáneas**. Si tú estás conectado (línea 0) y otros 4 compañeros de IT quieren entrar al mismo tiempo, podrán hacerlo. Si intentara entrar un sexto, el switch le diría que no hay espacio
+						
+					- **Switch(config-line)# password**  `password` + `un espacio` + `la clave que tú quieras`
+						- **¿Qué hace?** Establece la "llave" de entrada para esas líneas virtuales.
+						- **Detalle importante:** Esta contraseña es la **primera barrera**. Es lo primero que te pedirá el switch apenas pongas el comando `telnet`. Si no pones una contraseña aquí, por seguridad, Cisco bloquea el acceso remoto por defecto (no deja entrar a nadie "en blanco").
+					
+					- **Switch(config-line)# login**
+						-  **¿Para qué sirve?** Este comando es el que le da la orden al switch de **pedir** la contraseña.
+						- **El porqué:** Aunque hayas puesto una contraseña con el comando anterior, si no escribes `login`, el switch nunca te la preguntará y, por lo tanto, no te dejará pasar. Es como ponerle una cerradura a una puerta pero no cerrarla con llave; el comando `login` es el que "echa la llave".
+						
+					- Switch(config-line)# exit
+				
+				-  Poner una contraseña al modo privilegiado (Enable Password)
+					- **Switch(config)# enable password [Contraseña]** 
+						- **¿Qué hace?** Configura la contraseña para pasar del modo usuario (`Switch>`) al modo privilegiado (`Switch#`).
+						
+						- **¿Por qué es vital?** Como te mencioné antes, si intentas entrar por Telnet y el equipo **no tiene** esta contraseña configurada, el switch te desconectará por seguridad. No permite que nadie administre el equipo remotamente si no hay una clave para el modo "jefe" (privilegiado
+						
+						-  `enable password`: Guarda la clave en texto plano. Si alguien mira tu pantalla con el comando `show run`, leerá "cisco".
+						- `enable secret`: Encripta la clave. Si alguien mira tu configuración, verá una cadena de símbolos locos y no sabrá cuál es tu contraseña. **¡Es la que deberías usar en la vida real!**
+							
+				
+				- El comando de transporte (Opcional pero recomendado)
+					- Switch(config)# line vty 0 4
+					- **Switch(config-line)# transport input [Nombre de protrocolo]**
+						- **¿Qué hace?** Define el **idioma** o protocolo que el switch aceptará para que te conectes.
+						- **Anatomía:**
+						    - `transport`: Se refiere al transporte de datos
+								
+						    - `input`: Se refiere a lo que **entra** al switch.
+					
+							- Nombre del protocolo 
+							    - `telnet`: Es el nombre del protocolo.
+								    - - Si pones `telnet`, estás usando un protocolo **inseguro** (porque todo lo que escribes, incluidas las contraseñas, viaja en texto plano y un hacker podría leerlo).
+								    - **Por qué se usa:** Es extremadamente ligero y fácil de configurar. No requiere nada especial, solo una IP y una contraseña solo de practica.
+								    
+								- `ssh:` SSH (Secure Shell - El estándar actual)
+									- **Comando:** `transport input ssh`
+									- **Por qué se usa:** Es el protocolo profesional. Encripta toda la sesión (usuario, contraseña y comandos).
+									- **Seguridad:** **ALTA.** Aunque alguien robe los datos del cable, no podrá entender nada porque todo está cifrado.
+									- **Uso:** Es obligatorio en cualquier empresa real. Para usarlo en Cisco, necesitas configurar antes un `hostname` y un `ip domain-name`.
+								
+								- `all:` 
+									- **Por qué se usa:** Permite que el equipo acepte cualquier conexión (Telnet, SSH, e incluso otros menos comunes).
+									- **Seguridad:** **VARIABLE.** Es cómodo porque no te bloquea, pero es arriesgado porque dejas abierta la puerta a protocolos inseguros (como Telnet).
+									- **Uso:** Útil cuando estás migrando de Telnet a SSH y no quieres quedarte fuera del equipo por error.
+									
+								- `none:` (El "cerrojo total")
+									- - **Comando:** `transport input none`
+									- **Por qué se usa:** Bloquea **todas** las conexiones remotas a través de la red.
+									- **Seguridad:** **MÁXIMA.** Nadie puede entrar al equipo por red.
+									- **Uso:** Se usa en equipos críticos donde la única forma permitida de configurar es conectando físicamente el cable celeste de **Consola** en el cuarto de servidores.
+							    
+						- **¿Por qué ponerlo?** Le estás diciendo: _"Solo deja que la gente se conecte usando Telnet"_. Si en el futuro quieres más seguridad, usarás `transport input ssh`, que es una versión encriptada.
 
-					- Switch(config-if)# **switchport mode trunk**
+			- ==Acceder desde el PC al switch==
+				- 1. Haz clic en la **PC**.
+					1. Ve a la pestaña **Desktop**.
+					2. Abre el **Command Prompt** (la terminal negra).
+					3. Escribe el comando: `telnet [IP_DEL_SWITCH]` (ejemplo: `telnet 192.168.88.2`).
+					4. **El ritual de entrada:**
+					    - Te dirá: _User Access Verification_.
+					    - Escribe la **Password del VTY** (la primera que creamos). Recuerda: **no se ve nada mientras escribes**, es por seguridad. Dale Enter.
+					    - Verás el nombre del switch así: `Switch_Comedor>`.
+					    - Escribe `enable`.
+					    - Te pedirá la segunda contraseña (la de `enable password/secret`). Escríbela y dale Enter.
+					    - ¡Listo! Verás el símbolo `#` (`Switch_Comedor#`). Ya estás "dentro" del cerebro del equipo.
+					
+					5. ¿Qué puedes hacer desde ahí? (Control Total)
+					
+					Absolutamente **todo** lo que haces estando pegado al equipo con el cable de consola, lo puedes hacer por Telnet:
+					
+					- **Ver información:** Puedes usar todos los comandos `show` (`show ip interface brief`, `show vlan brief`, `show run`). Es genial para monitorear si un puerto se cayó o si hay errores desde tu oficina.
+					- **Configurar:** Puedes entrar a `configure terminal`, crear nuevas VLANs, apagar puertos (`shutdown`), cambiar nombres, etc.
+					- **Reiniciar o Guardar:** Puedes usar `write` para guardar cambios o `reload` para reiniciar el equipo a distancia.
+					
+					1. ¿Por qué usamos Telnet en tu pregunta?
+					
+					Usaste **Telnet** porque es el protocolo que configuramos con el comando `transport input telnet`. Es como si hubieras abierto una "llamada telefónica" de datos entre tu PC y el Switch.
+					
+					2. ¿Es este el objetivo final?
+					
+					**Sí.** El objetivo de un administrador de redes es tener una **Red Gestionable**. Una red donde puedas ver y arreglar todo desde un solo punto (tu PC de IT) sin tener que caminar por todo el edificio.
+					
+					**Un pequeño aviso de realidad:**  
+					Como entraste por **Telnet**, recuerda que si un hacker está "escuchando" el cable entre tu PC y el Switch, podrá ver tus contraseñas. Por eso, en cuanto domines esto, tu siguiente paso lógico será cambiar ese "idioma" de Telnet a **SSH** para que todo viaje encriptado.
+
+							
+			- ==**Asignar el trunk y VLANS nativa, el protocolo dot1Q**== 
+				- el router no se le asigna una VLNS o por equivocación meter una VLNS la idea es donde se conecto el router hacer esto ==**_Inter-VLAN Routing_**==
+				
+					- `Switch(config)# interface fa0/1` => el 0/1 es el puerto al que vamos a asignar así que hay que tener en cuenta para no configurar mal
+
+					- `Switch(config-if)# switchport mode trunk`
 					
 				- **VLANs nativa** - Como todo el mundo sabe que la VLAN 1 es la de fábrica, los hackers suelen usarla para intentar entrar a los switches, - Al cambiarla a una que tú inventes (por ejemplo, la 99 o la 999) y que no se use para nada más, "escondes" ese tráfico sin etiqueta.
 					- No olvidar que antes hacer el siguiente proceso toca toca crear la VLANS entes
 			
-					- `interface fastethernet 0/24` (El puerto que une los switches).
+					- `interface fastethernet [Numero de puerto]` (El puerto que une los switches).
 					- `switchport mode trunk`
-					- `switchport trunk native vlan 99`
+					- `switchport trunk native vlan 99`=> Cualquier basura o tráfico sin etiqueta que llegue por aquí, mándalo a la oficina de TI (VLAN 99), no lo dejes en la red común
 					
 				- cuando ya se configure el puerto ahora hay que hacerlo en el router esto se llama **_Router-on-a-Stick_** un solo cable (el "stick") lleva todo el tráfico de muchas VLANs.
 				- como no se puede poner dos IP al mismo puerto físico se crea **sub-interfaces** 
@@ -160,12 +252,12 @@
 						- Router(config-if)# exit
 
 					
-				también hay que tener en cuenta que si las IP de los computadores no esta bien configurada esto generara problemas 
+			- también hay que tener en cuenta que si las IP de los computadores no esta bien configurada esto generara problemas 
 					**IPs de los equipos (PCs):** Asegúrate de que tus computadoras tengan IPs que coincidan con sus subinterfaces:
 					- **PC en VLAN 10:** IP `192.168.10.x` / Gateway: `192.168.10.1`
 					- **Laptop en VLAN 20:** IP `192.168.20.x` / Gateway: `192.168.20.1`
 	
-	9. **ACL (Access Control Lists o Listas de Control de Acceso:** Al tener varias VLAS no controlamos el acceso a aras importantes esto evita el acceso de VENTAS a GERENCIA
+	3. **ACL (Access Control Lists o Listas de Control de Acceso:** Al tener varias VLAS no controlamos el acceso a aras importantes esto evita el acceso de VENTAS a GERENCIA
 			- `access-list 101 permit ip host 192.168.50.10 192.168.30.0 0.0.0.255`
 			
 		1. El Origen (`host 192.168.50.10`)
@@ -188,7 +280,7 @@
 			
 			- Entonces, `192.168.30.0 0.0.0.255` significa: _"Cualquier IP que empiece con 192.168.30, no importa si termina en .5, .10 o .200"_.
 			- 
-     10. **Configuración de EtherChannel:** para cuando tenemos un switch con puertos libre  podemos mejorar la velocidad de los datos usando el comando de unos de esto protocolos **PAgP**, **LACP** y **Vía Modo ON** y por ultimo se ponen como trunk
+     4. **Configuración de EtherChannel:** para cuando tenemos un switch con puertos libre  podemos mejorar la velocidad de los datos usando el comando de unos de esto protocolos **PAgP**, **LACP** y **Vía Modo ON** y por ultimo se ponen como trunk
 		 
 		 - **PAgP**, **LACP** y **Vía Modo ON** son los protocolos (los "idiomas") que usa para ponerse de acuerdo
 			 1. **PAgP (Port Aggregation Protocol)**
