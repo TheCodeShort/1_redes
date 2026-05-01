@@ -118,7 +118,7 @@
 							- **¿Qué hace?**: Le asigna una "tarjeta de red virtual" al switch con una IP específica dentro de la red de gestión.
 							- **Objetivo**: Es la dirección IP que escribirás en programas como PuTTY o para hacerle `ping` al switch desde tu oficina técnica.
 					
-					- **Fase 2: La Salida al Mundo (Puerta de Enlace)**
+				- **Fase 2: La Salida al Mundo (Puerta de Enlace)**
 						- S1(config)# ip default-gateway 192.168.99.1
 							- **¿Qué hace?**: Le dice al switch: "Si necesitas responderle a un técnico que está en otra red (ej. VLAN 10), envía la respuesta a través de esta IP (el Router)".
 							- **Importancia**: Sin esto, el switch se queda "sordo" para cualquier conexión que no venga de su propia red local
@@ -140,7 +140,7 @@
 						
 					- Switch(config-line)# exit
 				
-				-  Poner una contraseña al modo privilegiado (Enable Password)
+				-  Poner una contraseña al modo privilegiado **(enable Password)**
 					- **Switch(config)# enable password [Contraseña]** 
 						- **¿Qué hace?** Configura la contraseña para pasar del modo usuario (`Switch>`) al modo privilegiado (`Switch#`).
 						
@@ -158,7 +158,7 @@
 								
 						    - `input`: Se refiere a lo que **entra** al switch.
 					
-							- Nombre del protocolo 
+							- `Nombre del protocolo` 
 							    - `telnet`: Es el nombre del protocolo.
 								    - - Si pones `telnet`, estás usando un protocolo **inseguro** (porque todo lo que escribes, incluidas las contraseñas, viaja en texto plano y un hacker podría leerlo).
 								    - **Por qué se usa:** Es extremadamente ligero y fácil de configurar. No requiere nada especial, solo una IP y una contraseña solo de practica.
@@ -168,6 +168,39 @@
 									- **Por qué se usa:** Es el protocolo profesional. Encripta toda la sesión (usuario, contraseña y comandos).
 									- **Seguridad:** **ALTA.** Aunque alguien robe los datos del cable, no podrá entender nada porque todo está cifrado.
 									- **Uso:** Es obligatorio en cualquier empresa real. Para usarlo en Cisco, necesitas configurar antes un `hostname` y un `ip domain-name`.
+									
+									- ==**Manera correcta de usarlo**==
+										- **Router(config)# hostname R1**
+										- **Router(config)# ip domain-name miempresa.com**
+											- El SSH cifra la información usando un "Certificado Digital". Para crear ese certificado, el router combina el **nombre del equipo** + el **nombre del dominio** para crear su identidad única.
+
+											- **Sin esto:** El router no tiene un "nombre completo" y no puede generar la llave de cifrado.
+											
+										- **Router(config)# crypto key generate rsa  (aquí eliges 1024)**
+											- Este es el comando que **fabrica la llave de cifrado**.
+
+											- Imagina que vas a enviar un mensaje secreto. SSH es el candado, pero este comando es el que **fabrica la llave** del candado. Si no la generas, el router no tiene con qué "enredar" la información para que sea ilegible para los demás.
+											
+											- Al elegir **1024**, le das una fuerza suficiente para que sea segura.
+											
+										- **Router(config)# username admin secret 1234  (creas un usuario real)**	
+										
+											- A diferencia de Telnet (que solo te pide una contraseña), SSH está diseñado para ser más serio y requiere saber **quién** está entrando.
+
+											- **`username...`**: Creas una cuenta real (como en Windows o Facebook).
+											
+											- **`login local`**: Le dices a las líneas VTY: _"No pidas una contraseña suelta, busca en la base de datos interna el usuario y la clave que acabo de crear"_.
+										
+										- **Router(config)# line vty 0 4**
+										- **Router(config-line)# login local   (le dices que use el usuario de arriba)**
+										
+										- **Router(config-line)# transport input ssh  (bloqueas telnet y solo dejas entrar por SSH)**
+										
+											- Este es el único comando que es **opcional pero recomendado**.
+
+												- Si solo pones este, le estás prohibiendo al router hablar por Telnet.
+												- **La trampa:** Si pones este comando pero **no** hiciste los 3 pasos anteriores, ¡te quedarás fuera! Porque bloqueaste Telnet y el SSH no puede iniciar por falta de llaves.
+
 								
 								- `all:` 
 									- **Por qué se usa:** Permite que el equipo acepte cualquier conexión (Telnet, SSH, e incluso otros menos comunes).
@@ -196,35 +229,37 @@
 					    - ¡Listo! Verás el símbolo `#` (`Switch_Comedor#`). Ya estás "dentro" del cerebro del equipo.
 					
 					5. ¿Qué puedes hacer desde ahí? (Control Total)
-					
-					Absolutamente **todo** lo que haces estando pegado al equipo con el cable de consola, lo puedes hacer por Telnet:
-					
-					- **Ver información:** Puedes usar todos los comandos `show` (`show ip interface brief`, `show vlan brief`, `show run`). Es genial para monitorear si un puerto se cayó o si hay errores desde tu oficina.
-					- **Configurar:** Puedes entrar a `configure terminal`, crear nuevas VLANs, apagar puertos (`shutdown`), cambiar nombres, etc.
-					- **Reiniciar o Guardar:** Puedes usar `write` para guardar cambios o `reload` para reiniciar el equipo a distancia.
-					
-					1. ¿Por qué usamos Telnet en tu pregunta?
-					
-					Usaste **Telnet** porque es el protocolo que configuramos con el comando `transport input telnet`. Es como si hubieras abierto una "llamada telefónica" de datos entre tu PC y el Switch.
-					
-					2. ¿Es este el objetivo final?
-					
-					**Sí.** El objetivo de un administrador de redes es tener una **Red Gestionable**. Una red donde puedas ver y arreglar todo desde un solo punto (tu PC de IT) sin tener que caminar por todo el edificio.
-					
-					**Un pequeño aviso de realidad:**  
-					Como entraste por **Telnet**, recuerda que si un hacker está "escuchando" el cable entre tu PC y el Switch, podrá ver tus contraseñas. Por eso, en cuanto domines esto, tu siguiente paso lógico será cambiar ese "idioma" de Telnet a **SSH** para que todo viaje encriptado.
+						
+						- Absolutamente **todo** lo que haces estando pegado al equipo con el cable de consola, lo puedes hacer por Telnet:
+							
+							- **Ver información:** Puedes usar todos los comandos `show` (`show ip interface brief`, `show vlan brief`, `show run`). Es genial para monitorear si un puerto se cayó o si hay errores desde tu oficina.
+							- **Configurar:** Puedes entrar a `configure terminal`, crear nuevas VLANs, apagar puertos (`shutdown`), cambiar nombres, etc.
+							- **Reiniciar o Guardar:** Puedes usar `write` para guardar cambios o `reload` para reiniciar el equipo a distancia.
+						
+					6. ¿Por qué usamos Telnet en tu pregunta?
+						
+						- Usaste **Telnet** porque es el protocolo que configuramos con el comando `transport input telnet`. Es como si hubieras abierto una "llamada telefónica" de datos entre tu PC y el Switch.
+							
+					7. ¿Es este el objetivo final?
+						- **Sí.** El objetivo de un administrador de redes es tener una **Red Gestionable**. Una red donde puedas ver y arreglar todo desde un solo punto (tu PC de IT) sin tener que caminar por todo el edificio.
+							
+						- **Un pequeño aviso de realidad:**  
+							Como entraste por **Telnet**, recuerda que si un hacker está "escuchando" el cable entre tu PC y el Switch, podrá ver tus contraseñas. Por eso, en cuanto domines esto, tu siguiente paso lógico será cambiar ese "idioma" de Telnet a **SSH** para que todo viaje encriptado.
 
 			- ==Restricción de Acceso (Management Plane Protection), configurar el firewall==
-			
+
+				- Primero se aplica los comando a todos los Switch y aparatos como el Router.
 				- **Debe decirles que solo acepten conexiones de la IP específica de tu PC de TI:** tiene como objetivo crear una **Lista de Invitados VIP**.
-					- Switch(config)# access-list 10 permit 192.168.88.10
+				
+					- **Switch(config)# access-list 10 permit 192.168.88.10**
 					
 						- Explicacion del comando
 							1. `access-list` (El comando principal)
 	
-								Es la instrucción para crear una **ACL (Access Control List)**. Imagínalo como si estuvieras redactando una lista de reglas en un cuaderno. Por sí sola, la lista no hace nada; es solo una definición de quién tiene permiso y quién no.
+								Es la instrucción para crear una **ACL (Access Control List)**
+								Imagínalo como si estuvieras redactando una lista de reglas en un cuaderno. Por sí sola, la lista no hace nada; es solo una definición de quién tiene permiso y quién no.
 								
-							1. `10` (El número de identificación es como el nombre de la lista para su búsqueda )
+							2. `10` (El número de identificación es como el nombre de la lista para su búsqueda )
 								
 								- Este número le dice al Switch qué **tipo** de lista es:
 								
@@ -234,7 +269,7 @@
 										
 									- Es como un guardia que solo mira el nombre en el documento de identidad, pero no le importa a dónde vas ni qué llevas en la maleta.
 								
-							2. `permit` (La acción)
+							3. `permit` (La acción)
 								
 								Aquí defines qué hará el Switch cuando encuentre una coincidencia.
 								
@@ -242,7 +277,7 @@
 								- **Deny:** Bloquea el tráfico.
 								- **Ojo:** Al final de toda lista de acceso de Cisco hay un "Deny" invisible. Si no estás en la lista como "permitido", el Switch te bloquea por defecto.
 								
-							3. `192.168.88.10` (El objetivo específico)
+							4. `192.168.88.10` (El objetivo específico)
 								
 								Esta es la dirección IP de tu **PC de Zona TI**.
 								
@@ -251,7 +286,7 @@
 				
 				- **Asegurar las líneas VTY**
 				
-					- **Switch(config)# line vty 0 15** 
+					- **Switch(config)# line vty 0 15** => para el router es otro rango o dependiendo el equipo
 					
 						- Entra a la configuración de las **VTY (Virtual Teletype)**.
 							- **La idea**: Los switches no tienen un monitor y teclado físico pegados siempre; se administran por red. Estas "líneas" son los **puertos virtuales** que permiten conexiones por Telnet o SSH.
@@ -270,7 +305,7 @@
 							- **Verificación**: Si la IP es la **192.168.88.10** (tu PC de TI), el switch le dice: _"Adelante, pon tu contraseña"_.
 							- **Bloqueo Silencioso**: Si la IP es de Ventas o Alumnos, el switch **rechaza la conexión de inmediato**. Ni siquiera les da la oportunidad de intentar adivinar la contraseña.
 					
-				- **Proteger un Router:** 
+				- ==**Proteger un Router:** ==
 					- El router es el que comunica a las VLANs, por lo que él puede bloquear el tráfico antes de que llegue a su destino.
 				
 					- **Paso A: Bloquear el acceso remoto al Router**  
@@ -305,7 +340,7 @@
 					
 						- Para que los PCs de Ventas o Alumnos ni siquiera puedan hacerle _ping_ a tus switches o a tu PC de TI, puedes crear una ACL extendida y aplicarla en las subinterfaces:
 						
-						- **Esta regla bloquea cualquier tráfico que vaya hacia la red de TI (88.0)**
+						- **Esta regla bloquea cualquier tráfico que vaya hacia la red de TI (88.0)** => esto solo específica las reglas no se levanta el muro osea no bloquea el pign aun o bloquea un paquete 
 						
 							- **Router(config)# ip access-list extended BLOQUEO_TI**
 							
@@ -321,10 +356,10 @@
 								- **`ip`**: El protocolo. Al poner `ip`, bloqueas **todo**: pings (ICMP), navegación web (HTTP), transferencias de archivos (FTP), etc.
 								
 								- **`any`**: El **Origen**. Significa "cualquier equipo del mundo". No importa de dónde venga el paquete.
-								- **`192.168.88.0`**: El **Destino**. Es la red de tu Zona TI.
 								
+								- **`192.168.88.0`**: El **Destino**. Es la red de tu Zona TI.
 								- **`0.0.0.255`**: Se llama **Wildcard**. Es lo opuesto a la máscara de red. Le dice al router: "Solo fíjate en los primeros tres grupos (192.168.88) y no me importa el último número (.1, .2, .10, etc.)".
-								    - **En resumen:** Bloquea a cualquiera que intente tocar a cualquier equipo de la red 88.
+								    - **En resumen:** Bloquea a cualquiera que intente tocar a cualquier equipo de la red 88 osea cubre todas las ip por el rango de la mascara.
 								
 							- **Router(config-ext-nacl)# permit ip any any**
 						
@@ -335,13 +370,13 @@
 									- **El objetivo**: "Bloquea lo que te dije arriba, pero **permite todo lo demás**".
 						
 						- **Luego la aplicas en las interfaces de las otras VLANs (ejemplo VLAN 10):**
-							- Router(config)# interface g0/0.10
+							- **Router(config)# interface g0/0.10**
 							
 								- `interface g0/0.10`
 									- **¿Qué estás haciendo?**: Estás entrando específicamente a la **subinterfaz** que creaste para la VLAN 10 (Ventas o Alumnos).
 									- **La lógica**: Las reglas de seguridad se aplican en las interfaces porque es por donde "entra" y "sale" el tráfico del router. Para que el router detenga a un usuario de la VLAN 10, tienes que pararte en su puerta.
 									
-							- Router(config-subif)# ip access-group BLOQUEO_TI in
+							- **Router(config-subif)# ip access-group BLOQUEO_TI in**
 							
 								- Este es el comando que activa el filtro. Vamos a desmenuzarlo:
 									- **`ip access-group`**: Es el comando que vincula una ACL extendida a una interfaz física o lógica.
@@ -462,7 +497,7 @@
 	14. **`no shutdown`**: ¡El más importante! Por defecto, los puertos de los routers Cisco vienen "apagados" (en rojo). Este comando los **enciende** esto se ejecuta en el nivel **`Router(config-if)#`**
 	
 	15. ==**`copy running-config startup-config`**:== Guarda los cambios realizados en la memoria persistente del router  le dice al equipo: _"Toma todo lo que acabo de configurar en la RAM y cópialo en el disco duro para que no se borre"_ pero también se puede evitar  escribir todo eso es muy largo. En Cisco (y en Packet Tracer) anivel **Switch ># copy**
-	16. puedes usar la versión ultra resumida que hace exactamente lo mismo: Solo escribe: **`wr`** (que significa _write_) y dale a **Enter** también tener encuentra que este código se puede ejecutar en el nivel de **(#)** también se puede usar **`(config-if)# do write`** en caso que no estemos en el nivel de **(#)**
+	16. puedes usar la versión ultra resumida que hace exactamente lo mismo: Solo escribe: **`wr`** (que significa _write_) y dale a **Enter** también tener encuentra que este código se puede ejecutar en el nivel de **(#)** también se puede usar **`(config-if)# do write o (config-line)# do write`** en caso que no estemos en el nivel de **(#)**
 # 2_ayudas 
 1. cuando se escribe el comando mal el quipo empieza a buscar otra cosa y para evitar demoras se usa el comando **`Ctrl` + `Shift` + `6`**
 		La solución definitiva (Comando mágico)
