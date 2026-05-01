@@ -109,7 +109,7 @@
 						- R1(config-subif)#encapsulation dot1Q 99 `native`
 						- R1(config-subif)#ip address 192.168.99.1 255.255.255.0 
 						
-			- ==Asignar una IP a un equipo (Switch, impresora, etc
+			- ==Asignar una IP a un equipo (Switch, impresora, etc)==
 		
 				-  ==**Fase 1: Configuración del "Cerebro" del Switch (SVI)**==
 						- S1(config)# interface vlan [numero de la ]
@@ -146,10 +146,9 @@
 						
 						- **¿Por qué es vital?** Como te mencioné antes, si intentas entrar por Telnet y el equipo **no tiene** esta contraseña configurada, el switch te desconectará por seguridad. No permite que nadie administre el equipo remotamente si no hay una clave para el modo "jefe" (privilegiado
 						
-						-  `enable password`: Guarda la clave en texto plano. Si alguien mira tu pantalla con el comando `show run`, leerá "cisco".
+						-  `enable password`: Guarda la clave en texto plano. Si alguien mira tu pantalla con el comando `show run`, leerá "la clave".
 						- `enable secret`: Encripta la clave. Si alguien mira tu configuración, verá una cadena de símbolos locos y no sabrá cuál es tu contraseña. **¡Es la que deberías usar en la vida real!**
-							
-				
+								
 				- El comando de transporte (Opcional pero recomendado)
 					- Switch(config)# line vty 0 4
 					- **Switch(config-line)# transport input [Nombre de protrocolo]**
@@ -215,7 +214,143 @@
 					**Un pequeño aviso de realidad:**  
 					Como entraste por **Telnet**, recuerda que si un hacker está "escuchando" el cable entre tu PC y el Switch, podrá ver tus contraseñas. Por eso, en cuanto domines esto, tu siguiente paso lógico será cambiar ese "idioma" de Telnet a **SSH** para que todo viaje encriptado.
 
+			- ==Restricción de Acceso (Management Plane Protection), configurar el firewall==
+			
+				- **Debe decirles que solo acepten conexiones de la IP específica de tu PC de TI:** tiene como objetivo crear una **Lista de Invitados VIP**.
+					- Switch(config)# access-list 10 permit 192.168.88.10
+					
+						- Explicacion del comando
+							1. `access-list` (El comando principal)
+	
+								Es la instrucción para crear una **ACL (Access Control List)**. Imagínalo como si estuvieras redactando una lista de reglas en un cuaderno. Por sí sola, la lista no hace nada; es solo una definición de quién tiene permiso y quién no.
+								
+							1. `10` (El número de identificación es como el nombre de la lista para su búsqueda )
+								
+								- Este número le dice al Switch qué **tipo** de lista es:
+								
+									- **Del 1 al 99:** Son "Estándar". Solo pueden filtrar basándose en la **dirección IP de origen** (de dónde viene el mensaje).
+										- **1 al 99 (y del 1300 al 1999):** Son ACLs **Estándar**. Solo miran la IP de origen (quién envía).
+										- **100 al 199 (y del 2000 al 2699):** Son ACLs **Extendidas**. Pueden mirar origen, destino, y si es un correo, una web, un ping, etc.
+										
+									- Es como un guardia que solo mira el nombre en el documento de identidad, pero no le importa a dónde vas ni qué llevas en la maleta.
+								
+							2. `permit` (La acción)
+								
+								Aquí defines qué hará el Switch cuando encuentre una coincidencia.
+								
+								- **Permit:** Deja pasar el tráfico.
+								- **Deny:** Bloquea el tráfico.
+								- **Ojo:** Al final de toda lista de acceso de Cisco hay un "Deny" invisible. Si no estás en la lista como "permitido", el Switch te bloquea por defecto.
+								
+							3. `192.168.88.10` (El objetivo específico)
+								
+								Esta es la dirección IP de tu **PC de Zona TI**.
+								
+								- Al poner la IP exacta, le estás diciendo al Switch: "Busca exactamente a este equipo".
+								- Como no pusiste una máscara al final (wildcard), Cisco asume que te refieres únicamente a ese host (esa computadora específica).
+				
+				- **Asegurar las líneas VTY**
+				
+					- **Switch(config)# line vty 0 15** 
+					
+						- Entra a la configuración de las **VTY (Virtual Teletype)**.
+							- **La idea**: Los switches no tienen un monitor y teclado físico pegados siempre; se administran por red. Estas "líneas" son los **puertos virtuales** que permiten conexiones por Telnet o SSH.
+							- **El 0 15**: Significa que estás configurando las 16 sesiones simultáneas que soporta el switch (desde la sesión 0 hasta la 15). Al poner el rango completo, aseguras que no quede ninguna "puerta trasera" abierta sin protección.
 							
+					- **Switch(config-line)# access-class 10 in**
+					
+						- Este es el comando clave, el "guardia de seguridad".
+
+							- **`access-class`**: Es el comando hermano de `access-list`, pero diseñado específicamente para aplicarse en las líneas de terminal (VTY).
+							- **`10`**(nombre de la lista): Aquí es donde "llamas" a la lista que creamos antes. Le estás diciendo: _"Usa las reglas que escribí en la access-list 10"_.
+							- **`in`**: Significa que el filtro se aplica al tráfico que **entra** al switch.
+							
+						- Que es lo que hace final mente estos comandos
+							- **Filtro Inmediato**: Cuando alguien intenta conectar por Telnet/SSH, el switch mira la IP de quien llama.
+							- **Verificación**: Si la IP es la **192.168.88.10** (tu PC de TI), el switch le dice: _"Adelante, pon tu contraseña"_.
+							- **Bloqueo Silencioso**: Si la IP es de Ventas o Alumnos, el switch **rechaza la conexión de inmediato**. Ni siquiera les da la oportunidad de intentar adivinar la contraseña.
+					
+				- **Proteger un Router:** 
+					- El router es el que comunica a las VLANs, por lo que él puede bloquear el tráfico antes de que llegue a su destino.
+				
+					- **Paso A: Bloquear el acceso remoto al Router**  
+						- Igual que en los switches, aplica la lista en el router para que solo tu PC pueda entrar a configurarlo:
+						
+							- **Router(config)# access-list 10 permit 192.168.88.10**
+							
+								- **El objetivo:** Identificar tu PC de la Zona TI como la **única** autorizada para administrar el router.
+							
+								- **Diferencia clave:** En el router, esta lista es vital porque el router tiene muchas IPs (una por cada subinterfaz de VLAN). Sin esta lista, alguien desde la VLAN 10 podría intentar entrar usando la IP `192.168.1.1`. Esta regla dice: "No importa a qué IP del router le hablen, solo la IP 88.10 tiene permiso".
+								
+							- **Router(config)# line vty 0 4**
+							
+								- **¿Por qué 0 4?**: A diferencia de los switches (que suelen tener 16 líneas, 0-15), los routers Cisco por defecto suelen habilitar **5 sesiones simultáneas** (de la 0 a la 4).
+								
+								- **La idea:** Estás entrando al "pasillo" por donde viaja el tráfico de Telnet y SSH para configurar el equipo.
+								
+							- **Router(config-line)# access-class 10 in**
+							
+								- **El comando "Escudo":** Aquí es donde el router activa el filtro.
+								- **Lo que sucede en la práctica:** Cuando el router recibe un intento de conexión remota, antes de preguntar `User` o `Password`, chequea la IP de origen:
+								    - **¿Viene de la 192.168.88.10?** -> _"Adelante, identifícate"_.
+								    - **¿Viene de cualquier otra IP (Ventas, Alumnos)?** -> _"Conexión rechazada por el host"_. El router ni siquiera les contesta.
+								    
+					- Sin el `access-class`, el router le pediría la clave una y otra vez, gastando CPU y dándole oportunidad al atacante.
+					- Con el `access-class`, el router **ignora** al atacante. Es como si el router fuera invisible para cualquiera que no seas tú en tu PC de TI.
+						
+						**Un detalle importante:**  
+						Como ahora tienes este "filtro" puesto, si por alguna razón cambias la IP de tu computadora de TI (ejemplo, a la `.11`), **tú mismo te quedarás fuera** del router. Por eso, en la vida real, los administradores de TI siempre tienen IPs fijas.
+					
+					- **Paso B: Evitar que las otras VLANs "vean" a la Zona TI** 
+					
+						- Para que los PCs de Ventas o Alumnos ni siquiera puedan hacerle _ping_ a tus switches o a tu PC de TI, puedes crear una ACL extendida y aplicarla en las subinterfaces:
+						
+						- **Esta regla bloquea cualquier tráfico que vaya hacia la red de TI (88.0)**
+						
+							- **Router(config)# ip access-list extended BLOQUEO_TI**
+							
+								- **`ip access-list extended`**: A diferencia de las anteriores, aquí no usamos un número (como el 10), sino un **nombre**. Las ACL nombradas son mejores porque puedes editarlas más fácil y el nombre ya te dice qué hace.
+								
+								- **`extended`**: Esto le dice al router: "Prepárate, porque te voy a dar detalles de origen, destino y protocolo". Es un filtro mucho más fino.
+								
+								- **`BLOQUEO_TI`**: Es el nombre de tu regla. ¡Ojo! Los routers distinguen entre mayúsculas y minúsculas.
+								
+							- **Router(config-ext-nacl)# deny ip any 192.168.88.0 0.0.0.255**
+							
+								-  **`deny`**: La acción. Prohibir el paso.
+								- **`ip`**: El protocolo. Al poner `ip`, bloqueas **todo**: pings (ICMP), navegación web (HTTP), transferencias de archivos (FTP), etc.
+								
+								- **`any`**: El **Origen**. Significa "cualquier equipo del mundo". No importa de dónde venga el paquete.
+								- **`192.168.88.0`**: El **Destino**. Es la red de tu Zona TI.
+								
+								- **`0.0.0.255`**: Se llama **Wildcard**. Es lo opuesto a la máscara de red. Le dice al router: "Solo fíjate en los primeros tres grupos (192.168.88) y no me importa el último número (.1, .2, .10, etc.)".
+								    - **En resumen:** Bloquea a cualquiera que intente tocar a cualquier equipo de la red 88.
+								
+							- **Router(config-ext-nacl)# permit ip any any**
+						
+								- **Este es el comando más importante de esta lista.**
+
+									- **¿Por qué?**: En Cisco, si creas una lista y no pones un `permit` al final, el router bloquea **absolutamente todo** por defecto (un "Deny" invisible).
+									- **La lógica**: Sin esta línea, los PCs de Ventas no podrían entrar a la Zona TI (bien), ¡pero tampoco podrían salir a Internet ni hablarse entre ellos! (mal).
+									- **El objetivo**: "Bloquea lo que te dije arriba, pero **permite todo lo demás**".
+						
+						- **Luego la aplicas en las interfaces de las otras VLANs (ejemplo VLAN 10):**
+							- Router(config)# interface g0/0.10
+							
+								- `interface g0/0.10`
+									- **¿Qué estás haciendo?**: Estás entrando específicamente a la **subinterfaz** que creaste para la VLAN 10 (Ventas o Alumnos).
+									- **La lógica**: Las reglas de seguridad se aplican en las interfaces porque es por donde "entra" y "sale" el tráfico del router. Para que el router detenga a un usuario de la VLAN 10, tienes que pararte en su puerta.
+									
+							- Router(config-subif)# ip access-group BLOQUEO_TI in
+							
+								- Este es el comando que activa el filtro. Vamos a desmenuzarlo:
+									- **`ip access-group`**: Es el comando que vincula una ACL extendida a una interfaz física o lógica.
+									- **`BLOQUEO_TI`**: Es el nombre exacto de la lista que creamos antes. (Si te equivocas en una letra o mayúscula, no funcionará).
+									- **`in` (Dirección del tráfico)**: ¡Este es el punto más importante!
+									    - **`in` (Entrada)**: Significa que el router revisará el paquete **en cuanto llegue** desde el switch de la VLAN 10.
+									    - **¿Por qué es mejor `in`?**: Porque si el paquete va hacia la Zona TI (la red 88), el router lo descarta **antes** de gastar recursos procesando a dónde enviarlo. Es como un guardia que te detiene en la puerta del edificio, no cuando ya estás en el ascensor.
+
+
 			- ==**Asignar el trunk y VLANS nativa, el protocolo dot1Q**== 
 				- el router no se le asigna una VLNS o por equivocación meter una VLNS la idea es donde se conecto el router hacer esto ==**_Inter-VLAN Routing_**==
 				
@@ -257,7 +392,7 @@
 					- **PC en VLAN 10:** IP `192.168.10.x` / Gateway: `192.168.10.1`
 					- **Laptop en VLAN 20:** IP `192.168.20.x` / Gateway: `192.168.20.1`
 	
-	3. **ACL (Access Control Lists o Listas de Control de Acceso:** Al tener varias VLAS no controlamos el acceso a aras importantes esto evita el acceso de VENTAS a GERENCIA
+	2. **ACL (Access Control Lists o Listas de Control de Acceso:** Al tener varias VLAS no controlamos el acceso a aras importantes esto evita el acceso de VENTAS a GERENCIA
 			- `access-list 101 permit ip host 192.168.50.10 192.168.30.0 0.0.0.255`
 			
 		1. El Origen (`host 192.168.50.10`)
@@ -280,7 +415,7 @@
 			
 			- Entonces, `192.168.30.0 0.0.0.255` significa: _"Cualquier IP que empiece con 192.168.30, no importa si termina en .5, .10 o .200"_.
 			- 
-     4. **Configuración de EtherChannel:** para cuando tenemos un switch con puertos libre  podemos mejorar la velocidad de los datos usando el comando de unos de esto protocolos **PAgP**, **LACP** y **Vía Modo ON** y por ultimo se ponen como trunk
+     3. **Configuración de EtherChannel:** para cuando tenemos un switch con puertos libre  podemos mejorar la velocidad de los datos usando el comando de unos de esto protocolos **PAgP**, **LACP** y **Vía Modo ON** y por ultimo se ponen como trunk
 		 
 		 - **PAgP**, **LACP** y **Vía Modo ON** son los protocolos (los "idiomas") que usa para ponerse de acuerdo
 			 1. **PAgP (Port Aggregation Protocol)**
