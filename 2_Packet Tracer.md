@@ -1,14 +1,35 @@
 1. **no**: Para evitar el diálogo de configuración inicial esto sale apenas se ingresa al CLI del equipo.
 
 2. **Ayudas para ver y guardar:**
-	1. **`show running-config`**: Para ver qué has hecho hasta ahora saldrá la palabra **MORE** significa que hay mas información y solo es presionar **ENTER** para seguir bajando y cuando ya no haya mas información saldrá ***END**. 
+	1. ==**Para Switch:**== 
+		 - **`show running-config`**: Para ver qué has hecho hasta ahora saldrá la palabra **MORE** significa que hay mas información y solo es presionar **ENTER** para seguir bajando y cuando ya no haya mas información saldrá ***END**. 
 	
-	2. Para confirmar **`Switch# show vlan brief`** 
+		- **`show vlan brief`**: El mejor para ver la tabla de VLANs, su nombre y qué puertos están en modo acceso en cada una.
+		- **`show vlan id [Numero de VLANS]`**: Muestra información específica solo de la VLAN .
+		- **`show interfaces trunk`**: Dice qué puertos son **Trunk**, cuál es la **VLAN Nativa** y qué VLANs tienen permiso para pasar por el cable
 	
-	3. **`no shutdown`**: ¡El más importante! Por defecto, los puertos de los routers Cisco vienen "apagados" (en rojo). Este comando los **enciende** esto se ejecuta en el nivel **`Router(config-if)#`**
+	2. ==**Para router:**==
+		- - **`show ip interface brief`**: Te da una lista rápida de todas las interfaces, si están encendidas (`up/up`) y qué IP tienen (incluyendo la `Vlan 1` o `Vlan 99`).
+		- **`show ip route`**: Si usas un switch multicapa (como el 3560 o 3650), este comando te dirá si el switch está enrutando paquetes.
+		
+	3.  **Para saber qué está pasando físicamente en los cables:**
+
+		- **`show interfaces status`**: ==Switch==Te dice de un vistazo qué puertos tienen algo conectado, a qué velocidad van y en qué VLAN están.
+		- **`show interfaces fa0/3 switchport`**: ==Router, Switch== Este es un comando de "Rayos X". Te dice TODO sobre ese puerto: si es trunk o access, la vlan nativa, si tiene negociación activa, etc.
+		- **`show mac address-table`**: ==Switch== Te muestra qué equipos (por su dirección MAC) ha aprendido el switch y en qué puerto están conectados. ¡Es magia para rastrear intrusos!
+		
+	4. **Sobre Seguridad y ACLs**
+
+		- Como estás usando listas de acceso:
+		
+			- **`show access-lists`**: ==Router, Switch== Te muestra todas las ACLs creadas y, lo mejor, cuántas veces han bloqueado o permitido un paquete (el contador de _matches_).
+			- **`show ip access-group`**: ==Switch== Te dice en qué interfaz está aplicada cada ACL.
+			- **`show port-security`**: ==Switch==Si configuraste seguridad de puertos (para que solo una PC se conecte), este comando te dice si hay violaciones o bloqueos. 
+		
+	5. **`no shutdown`**: ¡El más importante! Por defecto, los puertos de los routers Cisco vienen "apagados" (en rojo). Este comando los **enciende** esto se ejecuta en el nivel **`Router(config-if)#`**
 	
-	4. ==**`copy running-config startup-config`**:== Guarda los cambios realizados en la memoria persistente del router  le dice al equipo: _"Toma todo lo que acabo de configurar en la RAM y cópialo en el disco duro para que no se borre"_ pero también se puede evitar  escribir todo eso es muy largo. En Cisco (y en Packet Tracer) anivel **Switch ># copy**
-	5. puedes usar la versión ultra resumida que hace exactamente lo mismo: Solo escribe: **`wr`** (que significa _write_) y dale a **Enter** también tener encuentra que este código se puede ejecutar en el nivel de **(#)** también se puede usar **`(config-if)# do write o (config-line)# do write`** en caso que no estemos en el nivel de **(#)**
+	6. ==**`copy running-config startup-config`**:== Guarda los cambios realizados en la memoria persistente del router  le dice al equipo: _"Toma todo lo que acabo de configurar en la RAM y cópialo en el disco duro para que no se borre"_ pero también se puede evitar  escribir todo eso es muy largo. En Cisco (y en Packet Tracer) anivel **Switch ># copy**
+	7. puedes usar la versión ultra resumida que hace exactamente lo mismo: Solo escribe: **`wr`** (que significa _write_) y dale a **Enter** también tener encuentra que este código se puede ejecutar en el nivel de **(#)** también se puede usar **`(config-if)# do write o (config-line)# do write`** en caso que no estemos en el nivel de **(#)**
 
 3. **nivel de privilegio:** cuando se abre la terminal aparece el nivel de estado con unos símbolos después del nombre ejemplo => Router >, Router#.
 
@@ -94,7 +115,6 @@
 						- **Confusión:** El atacante verá que tiene "link" (luz verde si el puerto está encendido), pero no recibirá una dirección IP, no podrá hacer ping a nadie y no encontrará ningún servicio. Estará atrapado en un lugar donde no hay nada que atacar.
 						
 						- interface range fa0/10 - 24
-						- switchport mode access
 						- switchport access vlan 666  # Los mandas al agujero negro
 						- shutdown                    # Apagas el puerto
 
@@ -140,10 +160,10 @@
 						- S1(config-if)# ip address 192.168.99.3 255.255.255.0
 						- S1(config-if)# no shutdown
 							- **¿Qué hace?**: Le asigna una "tarjeta de red virtual" al switch con una IP específica dentro de la red de gestión.
-							- **Objetivo**: Es la dirección IP que escribirás en programas como PuTTY o para hacerle `ping` al switch desde tu oficina técnica.
+							- **Objetivo**: Es la dirección IP que escribirás en programas como `PuTTY` o para hacerle `ping` al switch desde tu oficina técnica.
 					
 				- **Fase 2: La Salida al Mundo (Puerta de Enlace)**
-						- S1(config)# ip default-gateway 192.168.99.1
+						- **S1(config)# ip default-gateway 192.168.99.1**
 							- **¿Qué hace?**: Le dice al switch: "Si necesitas responderle a un técnico que está en otra red (ej. VLAN 10), envía la respuesta a través de esta IP (el Router)".
 							- **Importancia**: Sin esto, el switch se queda "sordo" para cualquier conexión que no venga de su propia red local
 						
@@ -358,6 +378,7 @@
 					- Con el `access-class`, el router **ignora** al atacante. Es como si el router fuera invisible para cualquiera que no seas tú en tu PC de TI.
 						
 						**Un detalle importante:**  
+						
 						Como ahora tienes este "filtro" puesto, si por alguna razón cambias la IP de tu computadora de TI (ejemplo, a la `.11`), **tú mismo te quedarás fuera** del router. Por eso, en la vida real, los administradores de TI siempre tienen IPs fijas.
 					
 					- **Paso B: Evitar que las otras VLANs "vean" a la Zona TI** 
@@ -414,7 +435,7 @@
 				
 					- `Switch(config)# interface fa0/1` => el 0/1 es el puerto al que vamos a asignar así que hay que tener en cuenta para no configurar mal
 
-					- `Switch(config-if)# switchport mode trunk`
+					- `Switch(config-if)# switchport mode trunk` => recordando que donde se conecta el router también es trunk 
 					
 				- **VLANs nativa** - Como todo el mundo sabe que la VLAN 1 es la de fábrica, los hackers suelen usarla para intentar entrar a los switches, - Al cambiarla a una que tú inventes (por ejemplo, la 99 o la 999) y que no se use para nada más, "escondes" ese tráfico sin etiqueta.
 					- No olvidar que antes hacer el siguiente proceso toca toca crear la VLANS entes

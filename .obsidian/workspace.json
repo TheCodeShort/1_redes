@@ -4,19 +4,21 @@
     "type": "split",
     "children": [
       {
-        "id": "f8eb7d7a37fa1521",
+        "id": "45f1e12c378fface",
         "type": "tabs",
         "children": [
           {
-            "id": "fa65f4a26ac162c5",
+            "id": "a2c562541c87822e",
             "type": "leaf",
             "state": {
-              "type": "univer-xlsx",
+              "type": "markdown",
               "state": {
-                "file": "4_excel/1_subneting.xlsx"
+                "file": "2_Packet Tracer.md",
+                "mode": "source",
+                "source": false
               },
               "icon": "lucide-file",
-              "title": "1_subneting"
+              "title": "2_Packet Tracer"
             }
           }
         ]
@@ -76,7 +78,8 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300
+    "width": 300,
+    "collapsed": true
   },
   "right": {
     "id": "cf0de204c1717d78",
@@ -179,11 +182,11 @@
       "univer:Univer": false
     }
   },
-  "active": "fa65f4a26ac162c5",
+  "active": "a2c562541c87822e",
   "lastOpenFiles": [
-    "1_TCP-IP_y_más.md",
-    "2_Packet Tracer.md",
     "4_excel/1_subneting.xlsx",
+    "2_Packet Tracer.md",
+    "1_TCP-IP_y_más.md",
     "4_excel"
   ]
 }
