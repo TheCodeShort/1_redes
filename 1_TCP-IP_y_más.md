@@ -501,3 +501,23 @@ Paso 1: Analizar la necesidad real
 | ---------- | --------------- | --------------- | ----------------------------------- | ---------------- |
 | **Piso 1** | 192.168.1.**0** | 192.168.1.**1** | 192.168.1.**2** - 192.168.1.**6**   | 192.168.1.**7**  |
 | **Piso 2** | 192.168.1.**8** | 192.168.1.**9** | 192.168.1.**10** - 192.168.1.**14** | 192.168.1.**15** |
+
+- **ID de Red:** Es la primera IP del bloque (siempre es par o cero).
+- **Gateway:** Por estándar, usamos la **primera IP útil** para el router.
+- **Broadcast:** Es la **última IP** del bloque (siempre es impar).
+
+1. Cuadro Naranja (Máscara e Infraestructura)
+
+Este cuadro **determina el "terreno" o el rango máximo** disponible para todas tus subredes.
+
+- Al decir que la máscara es `.192`, estás definiendo que el **salto de red es 64**.
+- Esto significa que tus subredes irán fijas de 64 en 64 (Ej: VLAN 10 empieza en .0, VLAN 20 en .64, VLAN 88 en .128).
+- **En resumen:** Te dice dónde empieza y dónde termina el espacio de cada VLAN.
+
+2. Cuadro Azul (Capacidad por Subred)
+
+Este cuadro **determina cuántos dispositivos caben** dentro de cada uno de esos trozos de 64.
+
+- Aquí es donde ves la realidad de tus equipos: tienes **62 espacios libres** por cada VLAN.
+- Como en tu proyecto solo tienes unas 3 PCs por VLAN más el router y los switches, este cuadro te confirma que **te sobra espacio** (tienes 62 y solo usas unos 5 o 6).
+- **En resumen:** Te dice cuántas IPs puedes asignar a tus computadoras, routers y switches antes de que se llene la red.

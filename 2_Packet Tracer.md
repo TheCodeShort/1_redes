@@ -1,6 +1,16 @@
 1. **no**: Para evitar el diálogo de configuración inicial esto sale apenas se ingresa al CLI del equipo.
 
-2. **nivel de privilegio:** cuando se abre la terminal aparece el nivel de estado con unos símbolos después del nombre ejemplo => Router >, Router#.
+2. **Ayudas para ver y guardar:**
+	1. **`show running-config`**: Para ver qué has hecho hasta ahora saldrá la palabra **MORE** significa que hay mas información y solo es presionar **ENTER** para seguir bajando y cuando ya no haya mas información saldrá ***END**. 
+	
+	2. Para confirmar **`Switch# show vlan brief`** 
+	
+	3. **`no shutdown`**: ¡El más importante! Por defecto, los puertos de los routers Cisco vienen "apagados" (en rojo). Este comando los **enciende** esto se ejecuta en el nivel **`Router(config-if)#`**
+	
+	4. ==**`copy running-config startup-config`**:== Guarda los cambios realizados en la memoria persistente del router  le dice al equipo: _"Toma todo lo que acabo de configurar en la RAM y cópialo en el disco duro para que no se borre"_ pero también se puede evitar  escribir todo eso es muy largo. En Cisco (y en Packet Tracer) anivel **Switch ># copy**
+	5. puedes usar la versión ultra resumida que hace exactamente lo mismo: Solo escribe: **`wr`** (que significa _write_) y dale a **Enter** también tener encuentra que este código se puede ejecutar en el nivel de **(#)** también se puede usar **`(config-if)# do write o (config-line)# do write`** en caso que no estemos en el nivel de **(#)**
+
+3. **nivel de privilegio:** cuando se abre la terminal aparece el nivel de estado con unos símbolos después del nombre ejemplo => Router >, Router#.
 
 	1. **El símbolo `>` (Modo Usuario)**
 		Cuando abres el CLI y ves `Router>`, estás en la puerta de la casa. Solo puedes mirar un poco, pero no puedes tocar nada.
@@ -20,7 +30,7 @@
 		
 		- **Significado:** Estás en el modo "maestro". Aquí es donde escribes los comandos para cambiar nombres, poner IPs o encender puertos.
 		
-3. **Comandos mas utilizados:**
+4. **Comandos mas utilizados:**
 	1. **`enable`**: Para entrar al modo privilegiado (pasar de `>` a `#`).
 	2. **`configure terminal` o  `conf t`**: Para entrar al modo de configuración (donde haces los cambios).
 	3. **`hostname [Nombre]`**: Para ponerle un nombre al equipo (ej: `hostname Switch_Piso1`) y en el CLI se vera así **`Switch_Piso1(config)# hostname Sala_Internet`**.
@@ -75,6 +85,19 @@
 				- Switch(config-vlan)# name VENTAS
 				- Switch(config-vlan)# exit
 				
+			- **VLAN 666:**
+				- Crear la **VLAN 666** es una práctica común para crear un **"Agujero Negro" (Black Hole VLAN)**.
+					- No es una VLAN especial por software, es simplemente un número que los técnicos eligen (por el simbolismo del número) para agrupar todos los **puertos que no se están usando**.
+						
+						- **Segmentación:** El atacante queda en una "isla" virtual. Aunque logre saltarse el bloqueo físico (el `shutdown`), no podrá "ver" a las PCs de la VLAN 10 ni de la VLAN 20 porque están en redes lógicas distintas.
+						- **Sin Salida (Black Hole):** Como esa VLAN 666 no tiene una dirección IP configurada en el router (no hay sub-interfaz), el hacker no tiene **Puerta de Enlace (Gateway)**. No puede salir a Internet ni saltar a otras redes.
+						- **Confusión:** El atacante verá que tiene "link" (luz verde si el puerto está encendido), pero no recibirá una dirección IP, no podrá hacer ping a nadie y no encontrará ningún servicio. Estará atrapado en un lugar donde no hay nada que atacar.
+						
+						- interface range fa0/10 - 24
+						- switchport mode access
+						- switchport access vlan 666  # Los mandas al agujero negro
+						- shutdown                    # Apagas el puerto
+
 			- **Asignar una VLANS a los puertos** 	
 				- `Switch(config)# interface range fastEthernet 0/2 - 10`
 				
@@ -90,7 +113,8 @@
 						- `Switch(config-if)#`switchport access vlan [numero de VLANS]``
 						
 				-  ==**Blindaje de Gestión y Cambio de VLAN Nativa (VLAN 99)**==
-					- Separar el tráfico de administración del tráfico de los usuarios para evitar ataques de **VLAN Hopping** y permitir el acceso remoto seguro a los equipos de red desde un segmento aislado.
+					- **VLAN Pruning y Segmentación de Nativa:** Separar el tráfico de administración del tráfico de los usuarios para evitar ataques de **VLAN Hopping** y permitir el acceso remoto seguro a los equipos de red desde un segmento aislado.
+					
 
 					- **Fase 1: Creación de la Identidad**
 						- `S1(config)# vlan 99`
@@ -107,7 +131,7 @@
 					- **Fase 3: Para que el router reconozca la VLAN 99**
 						- R1(config)#interface fastEthernet 0/0.99
 						- R1(config-subif)#encapsulation dot1Q 99 `native`
-						- R1(config-subif)#ip address 192.168.99.1 255.255.255.0 
+						- R1(config-subif)#ip address 192.168.99.1 255.255.255.0  
 						
 			- ==Asignar una IP a un equipo (Switch, impresora, etc)==
 		
@@ -385,7 +409,6 @@
 									    - **`in` (Entrada)**: Significa que el router revisará el paquete **en cuanto llegue** desde el switch de la VLAN 10.
 									    - **¿Por qué es mejor `in`?**: Porque si el paquete va hacia la Zona TI (la red 88), el router lo descarta **antes** de gastar recursos procesando a dónde enviarlo. Es como un guardia que te detiene en la puerta del edificio, no cuando ya estás en el ascensor.
 
-
 			- ==**Asignar el trunk y VLANS nativa, el protocolo dot1Q**== 
 				- el router no se le asigna una VLNS o por equivocación meter una VLNS la idea es donde se conecto el router hacer esto ==**_Inter-VLAN Routing_**==
 				
@@ -422,10 +445,10 @@
 						- Router(config-if)# exit
 
 					
-			- también hay que tener en cuenta que si las IP de los computadores no esta bien configurada esto generara problemas 
-					**IPs de los equipos (PCs):** Asegúrate de que tus computadoras tengan IPs que coincidan con sus subinterfaces:
-					- **PC en VLAN 10:** IP `192.168.10.x` / Gateway: `192.168.10.1`
-					- **Laptop en VLAN 20:** IP `192.168.20.x` / Gateway: `192.168.20.1`
+				- también hay que tener en cuenta que si las IP de los computadores no esta bien configurada esto generara problemas 
+						**IPs de los equipos (PCs):** Asegúrate de que tus computadoras tengan IPs que coincidan con sus subinterfaces:
+						- **PC en VLAN 10:** IP `192.168.10.x` / Gateway: `192.168.10.1`
+						- **Laptop en VLAN 20:** IP `192.168.20.x` / Gateway: `192.168.20.1`
 	
 	2. **ACL (Access Control Lists o Listas de Control de Acceso:** Al tener varias VLAS no controlamos el acceso a aras importantes esto evita el acceso de VENTAS a GERENCIA
 			- `access-list 101 permit ip host 192.168.50.10 192.168.30.0 0.0.0.255`
@@ -490,14 +513,6 @@
 				 - switchport mode trunk
 	 - ![[1_ethernChanel.png]]
 
-	12. **`show running-config`**: Para ver qué has hecho hasta ahora saldrá la palabra **MORE** significa que hay mas información y solo es presionar **ENTER** para seguir bajando y cuando ya no haya mas información saldrá ***END**. 
-	
-	13. Para confirmar **`Switch# show vlan brief`** 
-	
-	14. **`no shutdown`**: ¡El más importante! Por defecto, los puertos de los routers Cisco vienen "apagados" (en rojo). Este comando los **enciende** esto se ejecuta en el nivel **`Router(config-if)#`**
-	
-	15. ==**`copy running-config startup-config`**:== Guarda los cambios realizados en la memoria persistente del router  le dice al equipo: _"Toma todo lo que acabo de configurar en la RAM y cópialo en el disco duro para que no se borre"_ pero también se puede evitar  escribir todo eso es muy largo. En Cisco (y en Packet Tracer) anivel **Switch ># copy**
-	16. puedes usar la versión ultra resumida que hace exactamente lo mismo: Solo escribe: **`wr`** (que significa _write_) y dale a **Enter** también tener encuentra que este código se puede ejecutar en el nivel de **(#)** también se puede usar **`(config-if)# do write o (config-line)# do write`** en caso que no estemos en el nivel de **(#)**
 # 2_ayudas 
 1. cuando se escribe el comando mal el quipo empieza a buscar otra cosa y para evitar demoras se usa el comando **`Ctrl` + `Shift` + `6`**
 		La solución definitiva (Comando mágico)

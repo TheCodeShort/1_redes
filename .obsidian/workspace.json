@@ -4,21 +4,19 @@
     "type": "split",
     "children": [
       {
-        "id": "28e215af3b4675ba",
+        "id": "f8eb7d7a37fa1521",
         "type": "tabs",
         "children": [
           {
-            "id": "abae1ca8c69312bd",
+            "id": "fa65f4a26ac162c5",
             "type": "leaf",
             "state": {
-              "type": "markdown",
+              "type": "univer-xlsx",
               "state": {
-                "file": "2_Packet Tracer.md",
-                "mode": "source",
-                "source": false
+                "file": "4_excel/1_subneting.xlsx"
               },
               "icon": "lucide-file",
-              "title": "2_Packet Tracer"
+              "title": "1_subneting"
             }
           }
         ]
@@ -78,8 +76,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300,
-    "collapsed": true
+    "width": 300
   },
   "right": {
     "id": "cf0de204c1717d78",
@@ -178,9 +175,15 @@
       "daily-notes:Abrir la nota de hoy": false,
       "templates:Insertar plantilla": false,
       "command-palette:Abrir paleta de comandos": false,
-      "bases:Crear nueva base": false
+      "bases:Crear nueva base": false,
+      "univer:Univer": false
     }
   },
-  "active": "abae1ca8c69312bd",
-  "lastOpenFiles": []
+  "active": "fa65f4a26ac162c5",
+  "lastOpenFiles": [
+    "1_TCP-IP_y_más.md",
+    "2_Packet Tracer.md",
+    "4_excel/1_subneting.xlsx",
+    "4_excel"
+  ]
 }
