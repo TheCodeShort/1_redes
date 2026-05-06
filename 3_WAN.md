@@ -365,4 +365,67 @@ Cuando el router se llena, debe decidir a quién atiende primero.
 - **CBWFQ (Class-Based Weighted Fair Queuing):** Es más avanzado, asigna un ancho de banda fijo a diferentes clases de tráfico.
     
 - **Policing y Shaping:** Son dos técnicas vitales que limitan o suavizan el tráfico excedente para evitar la congestión.
->>>>>>> 56ca53152123cc4257851602e4dd1101c44d7404
+
+# 9_**Integración de Dispositivos y Protocolos WAN**.
+[[2_redes.pdf#search=Integración de Dispositivos y Protocolos WAN|2_redes, p.151]]
+
+Si en la temática 1 (LAN) construimos las oficinas por dentro, y en la temática 3 (WAN) pusimos los cables para conectar las ciudades, **esta temática trata sobre cómo hacer que esas dos cosas funcionen juntas como una sola gran máquina perfecta y moderna**.
+
+He analizado el documento y aquí tienes la explicación profunda y detallada de todo lo que abarca esta sección:
+
+# 1_Definición (Uniendo los dos mundos)
+
+La integración de dispositivos y protocolos WAN se refiere a la configuración conjunta de routers, switches y tecnologías de comunicación para lograr enlazar las redes locales (LAN) de diferentes ciudades geográficas a través de una red de área amplia (WAN).
+
+El objetivo de hacer esto no es solo "conectar un cable", sino garantizar que la red tenga **interoperabilidad, redundancia, seguridad y el tráfico viaje optimizado**. Para lograr esta magia, el ingeniero debe mezclar tecnologías clásicas (como troncales y túneles) con soluciones de última generación (como SD-WAN y Metro Ethernet).
+
+#### 2. Conceptos Clave (El núcleo técnico)
+
+El documento expone cómo se logran estas conexiones maestras a través de cuatro grandes pilares:
+
+- **Enlaces troncales entre LAN y WAN:**
+
+	- Se trata de extender tus VLANs a través de grandes distancias para que lleguen a otras sedes usando interfaces "trunk".
+	
+	- Para que funcione, el documento indica que se requiere usar la encapsulación correcta (el estándar dot1Q) y tener mucho cuidado en coordinar que la VLAN nativa sea la misma en ambos lados.
+
+
+- **Túneles GRE y Optimización de Tráfico:**
+
+	- Como vimos antes, el protocolo GRE (Generic Routing Encapsulation) permite tomar una gran variedad de protocolos internos y "esconderlos" dentro de paquetes IP normales.
+	    
+	- Esto permite unir redes de oficinas que son distintas cruzando libremente por el Internet público, manteniendo tu enrutamiento interno intacto.
+	    
+	- Además, el documento resalta que permite mejorar el flujo de los datos mediante el balanceo y políticas de rutas , y para que sea seguro, **puede y debe combinarse con IPSec** para añadir la capa de cifrado.
+	    
+
+- **Metro Ethernet (La LAN gigante):**
+
+	- Es una tecnología que permite a las empresas usar conexiones de alta velocidad Ethernet, pero expandidas a nivel de toda una ciudad (metropolitano).
+	    
+	- Es muy usado por corporaciones para conectar sus sedes usando la infraestructura del proveedor de servicios, manteniendo beneficios corporativos como las VLANs y la Calidad de Servicio (QoS) en sus interfaces.
+    
+
+- **SD-WAN (El rey moderno de la conectividad):**
+
+	- SD-WAN (Software-Defined WAN) es aplicar la magia de la automatización (Temática 6) a las conexiones mundiales. Usa controladores centrales y políticas definidas por software.
+	    
+	- **Selección Dinámica:** SD-WAN no usa un solo cable ciegamente. Tiene la inteligencia para medir la salud de la red (analizando el jitter, la pérdida de paquetes y la latencia). Si un enlace está lento, redirige el tráfico automáticamente.
+	    
+	- **SD-WAN vs MPLS (La batalla corporativa):** El documento hace una comparación clave.
+    
+    - El _MPLS_ tradicional ofrece latencia baja y QoS garantizada, pero tú dependes 100% del proveedor y es muy costoso.
+        
+    - El _SD-WAN_ en cambio, ofrece reducción de costos, gestión autónoma para la empresa y flexibilidad total (puedes mezclar Internet banda ancha, antenas LTE 4G/5G y MPLS al mismo tiempo), sumándole además la creación automática de VPNs cifradas.
+        
+
+#### 3. Ejemplos de la Vida Real del Documento
+
+- **Ejemplo 1 (El salto a SD-WAN):** Una gran corporación decide dejar su red MPLS antigua y costosa, reemplazándola por SD-WAN. Gracias a esto, el sistema ahora redirige de forma automática e inteligente todo el tráfico pesado de sus videoconferencias por los enlaces de menor latencia y balancea el tráfico entre sus otras conexiones, logrando más velocidad y menos costos.
+    
+- **Ejemplo 2 (Metro Ethernet y GRE):** Dos edificios de una empresa están conectados en la misma ciudad mediante Metro Ethernet. Los ingenieros configuran troncales entre ellos y habilitan un túnel GRE para encapsular el tráfico de sus VLANs, permitiendo que la telefonía de voz (VoIP) y los servidores se compartan fácilmente entre los edificios sin interrupciones.
+    
+
+#### 4. Conclusión de la Temática
+
+La integración efectiva de estos protocolos es lo que realmente mantiene a flote a una empresa moderna. Dominar cómo combinar túneles, Metro Ethernet y SD-WAN convierte al ingeniero en una pieza clave de la transformación digital. Estas herramientas permiten que la red soporte los modelos actuales más exigentes, como el trabajo 100% remoto, los servicios en la nube y la movilidad del personal.
