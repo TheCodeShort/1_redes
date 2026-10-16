@@ -1,3 +1,38 @@
+```table-of-contents
+title: Conceptos Red
+minDepth: 1
+maxDepth: 6
+listStyle: number
+```
+
+# Para ver el registro interno del equipo 
+```C
+show arp
+```
+# Para seguridad en el router o switch 
+## line console 0 
+Este comando sirve para **entrar a la configuración del puerto físico de administración del switch o router**.
+
+Imagina que el switch es una fortaleza: `line console 0` es el comando que te permite pararte en la **puerta de entrada física** para ponerle un candado (una contraseña).
+
+Aquí te detallo qué significa cada palabra de ese comando:
+
+- **`line` (Línea):** Le dice al equipo que vas a configurar una vía o canal de comunicación.
+- **`console` (Consola):** Especifica que la vía que vas a configurar es el puerto físico trasero (el puerto de consola de color celeste donde conectas el cable hacia tu laptop para usar **PuTTY**).
+- **`0` (Cero):** En informática se empieza a contar desde el cero. Como los switches y routers solo tienen **un único puerto de consola físico**, ese puerto es el número `0`.
+- No olvidar que es para ponerle contraseña a penas uno se conecta 
+
+```c
+router/switch(config)# line console 0
+router/switch(config-line)# password (clave)
+router/switch(config-line)# login
+```
+
+## session-limits
+limitar la sección  en la que esta uno dentro 
+```c
+session-limit {numero en segundos}
+```
 1. **no**: Para evitar el diálogo de configuración inicial esto sale apenas se ingresa al CLI del equipo.
 
 2. **Ayudas para ver y guardar:**
@@ -28,8 +63,10 @@
 		
 	5. **`no shutdown`**: ¡El más importante! Por defecto, los puertos de los routers Cisco vienen "apagados" (en rojo). Este comando los **enciende** esto se ejecuta en el nivel **`Router(config-if)#`**
 	
-	6. ==**`copy running-config startup-config`**:== Guarda los cambios realizados en la memoria persistente del router  le dice al equipo: _"Toma todo lo que acabo de configurar en la RAM y cópialo en el disco duro para que no se borre"_ pero también se puede evitar  escribir todo eso es muy largo. En Cisco (y en Packet Tracer) anivel **Switch ># copy**
-	7. puedes usar la versión ultra resumida que hace exactamente lo mismo: Solo escribe: **`wr`** (que significa _write_) y dale a **Enter** también tener encuentra que este código se puede ejecutar en el nivel de **(#)** también se puede usar **`(config-if)# do write o (config-line)# do write`** en caso que no estemos en el nivel de **(#)**
+	6. `write memory`: para guardar en memoria siempre aplicar los dos  
+	
+	7. ==**`copy running-config startup-config`**:== Guarda los cambios realizados en la memoria persistente del router  le dice al equipo: _"Toma todo lo que acabo de configurar en la RAM y cópialo en el disco duro para que no se borre"_ pero también se puede evitar  escribir todo eso es muy largo. En Cisco (y en Packet Tracer) anivel **Switch ># copy**
+	8. puedes usar la versión ultra resumida que hace exactamente lo mismo: Solo escribe: **`wr`** (que significa _write_) y dale a **Enter** también tener encuentra que este código se puede ejecutar en el nivel de **(#)** también se puede usar **`(config-if)# do write o (config-line)# do write`** en caso que no estemos en el nivel de **(#)**
 
 3. **nivel de privilegio:** cuando se abre la terminal aparece el nivel de estado con unos símbolos después del nombre ejemplo => Router >, Router#.
 

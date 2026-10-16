@@ -1,3 +1,10 @@
+```table-of-contents
+title: Conceptos Red
+minDepth: 1
+maxDepth: 6
+listStyle: number
+```
+
 # 1_Definición: El salto de LAN a WAN
 
 - **¿Qué es?** Mientras que una LAN (==**L**ocal **A**rea **R**etwork - Red de Área Local==) conecta computadoras dentro de un mismo edificio bajo tu control, una WAN (==**W**ide **A**rea **R**etwork - Red de Área Amplia==) conecta redes geográficamente separadas cruzando ciudades, países o continentes.
@@ -316,8 +323,7 @@ Las WAN avanzadas ya no solo usan cables seriales viejos.
 | **MPLS**           | Velocidad y Privacidad | El proveedor garantiza el camino (SLA).                                 |
 | **SD-WAN**         | Agilidad y Costo       | Puedes usar internet común como si fuera una red privada cara.          |
 | **Metro Ethernet** | Simplicidad            | Conectas tus sedes como si estuvieran en el mismo switch de la oficina. |
-<<<<<<< HEAD
-=======
+
 
 # 8_QoS
 #### El "Tráfico VIP" de la red

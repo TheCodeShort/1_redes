@@ -1,3 +1,13 @@
+
+```table-of-contents
+title: Conceptos Red
+minDepth: 1
+maxDepth: 6
+listStyle: number
+```
+
+
+
 ![[1_tcp-ip.png|697]]
 # ¿Por que se agruparon ?
 

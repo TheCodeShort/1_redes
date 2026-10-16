@@ -1,3 +1,9 @@
+```table-of-contents
+title: Conceptos Red
+minDepth: 1
+maxDepth: 6
+listStyle: number
+```
 
 # 1_Formatos y prefijos de direcciones IPv6: 
 

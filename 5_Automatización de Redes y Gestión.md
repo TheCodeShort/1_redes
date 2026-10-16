@@ -1,3 +1,10 @@
+```table-of-contents
+title: Conceptos Red
+minDepth: 1
+maxDepth: 6
+listStyle: number
+```
+
 # 1_Conceptos Clave (El núcleo técnico)
 
 - **Software-Defined Networking (SDN):** Es una arquitectura que cambia las reglas del juego.
