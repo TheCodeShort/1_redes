@@ -4,8 +4,128 @@ minDepth: 1
 maxDepth: 6
 listStyle: number
 ```
+# Para configurar DHCP y HSRP
 
+## 1_Crear el contenedor
+
+**este comando sirve para crear el contenedor y ponerle el nombre**, y a partir de ahí empiezas a meter la configuración real del DHCP
+
+En los equipos Cisco, el router no te permite configurar cosas al aire. Primero tienes que decirle **en dónde** quieres meter esa configuración.
+
+Imagina que entras a una bodega gigante llena de herramientas. No puedes llegar y gritar: _"¡Quiero pintar las paredes de color azul!"_ si ni siquiera has abierto la puerta del cuarto que quieres pintar.
+
+Al escribir `ip dhcp pool 10-GESTION`, le estás diciendo al router: **"Oye, ábreme una carpeta nueva con este nombre"**. En ese instante, el router te mete dentro de esa carpeta (el prompt cambia a `Router(dhcp-config)#`) y todo lo que escribas a partir de ahí (como la red, las IPs a excluir, etc.) **se guardará exclusivamente dentro de esa carpeta llamada 10-GESTION**.
+
+```c
+ip dhcp pool {numero de la VLAN solo ejemplo }-{nombre de esa VLAN solo ejemplo}
+```
+- **`ip`**: Le avisa al router que vamos a configurar algo relacionado con el protocolo de internet (las reglas del juego de la red).
+- **`dhcp`**: Son las siglas de _Dynamic Host Configuration Protocol_ (Protocolo de Configuración Dinámica de Anfitriones). En cristiano: el sistema que asigna datos automáticos para que no tengas que ir aparato por aparato escribiendo los números a mano.
+- **`pool`**: En inglés significa piscina o estanque, pero en redes significa **"un grupo" o "un saco"** de cosas guardadas.
+- **`[10]-{GESTION}`**: Este es el **nombre personalizado** que tú le diste a ese saco. Le pudiste haber puesto `Internet-Sistemas` o `Wifi-Invitados`, pero elegiste `10-GESTION` (probablemente porque pertenece a una sección de la red que se encarga de administrar o gestionar los equipos).
+
+## 2_Definir el territorio del contenedor 
+Si el primer comando creó la carpeta vacía llamada `10-GESTION`, el comando `network` es el que **llena esa carpeta con los números de IP permitidos**
+Le dice al router: _"Oye, en este contenedor solo vas a fabricar y regalar IPs que pertenezcan a esta calle específica_
+
+Si la red del comando `network` no coincide EXACTAMENTE con la IP que le pusiste a la puerta de la VLAN (la subinterfaz del router), el sistema se rompe no es que salga error sino que se rompe su logia y habra mucho caos 
+
+```c
+network {nuemro de ip de esa VLAN}{la mascara de esa VLAN}
+```
+
+## 3_Bautizar la red con el apellido de la empresa
+magina que las computadoras que se van a conectar a la VLAN 10 son como empleados nuevos que entran a trabajar. Con el comando `network` ya les diste su número de identificación (su IP). Ahora, con el comando `domain-name`, el robot DHCP les va a tatuar automáticamente en la frente **el nombre de la empresa a la que pertenecen** (por ejemplo: `miempresa.com` o `colegio.local`).
+
+Si una computadora se quiere comunicar con un servidor interno que se llama "Servidor1", gracias a este comando, la computadora sabe que su nombre completo en el mundo de internet es `://miempresa.com`. Es, literalmente, **el apellido oficial de tu red**.
+
+a tener en cuenta => > **Este comando no acepta espacios y solo sirve si pones texto en formato de internet (letras separadas por un punto, como `empresa.com`). Si pones espacios o te equivocas en una sola letra, podrías romper servicios avanzados que verás más adelante.**
+
+```c
+domain-name {nombre de la empresa o del dominio}
+```
+
+## 4_Configurar la puerta de escape de emergencia HSRP
+
+El comando `default-router` sirve para decirle a todas las computadoras de tu VLAN: _"Oye, cuando quieras ir a una página de internet como YouTube o Discord, tienes que mandarle tus paquetes a esta dirección IP"_. Es, literalmente, **el mapa hacia la salida del edificio**.
+
+```c
+default-router {ip y finaliza en 254}
+```
+
+🧠 ¿Por qué el se usó la IP que termina en .254 para HSRP?
+
+Aquí está el secreto mejor guardado de los ingenieros de redes. **HSRP** (Hot Standby Router Protocol) es un truco de magia que se usa para que el internet nunca se caiga.
+
+Imagina que en una empresa importante no se pueden dar el lujo de que un router se queme o se apague y deje a todos sin internet. ¿Qué hacen? Ponen **dos routers reales** físicos cuidando la misma VLAN.
+
+- El Router A tiene la IP real `192.168.10.1`
+- El Router B tiene la IP real `192.168.10.2`
+
+Si tú le pones a las computadoras como salida la IP del Router A (`.1`), y ese router se quema, ¡todos se quedan sin internet!
+
+Para solucionar esto, HSRP crea un **"Router Fantasma" (o Router Virtual)** que no existe físicamente, pero que los dos routers reales controlan. A ese router fantasma tu profe le asignó la última IP utilizable de la red: **la `.254`**.
+
+Con el comando `default-router 192.168.10.254`, tú le dices a las computadoras que apunten al fantasma. Si el Router A se muere, el Router B se da cuenta al instante, se disfraza del fantasma `.254` y sigue recibiendo el internet de todos. ¡Los usuarios ni se enteran de que un router explotó!
+
+> **En el comando `default-router` de tu DHCP tienes que poner la IP del router virtual (fantasma) de HSRP, NUNCA las IPs reales de los routers físicos (ni la .1 ni la .2).**
+
+## 5_Ponerle candado a las IPs de los jefes
+
+⚡ Explicación rápida
+
+Imagina que ya creaste todas las habitaciones en tu hotel (tus pools de DHCP). Ya tienes el contenedor de la VLAN 10, el de la VLAN 20, el de la VLAN 30, etc. El robot DHCP ya está listo con sus bolsas llenas de llaves para repartir.
+
+Antes de abrir las puertas del hotel al público, usas el comando **`ip dhcp excluded-address`** para decirle al robot: _"¡Quieto ahí! Antes de que empieces a regalar llaves como loco a los clientes, sácame de la bolsa las llaves de la `.1` a la `.10` (que son para mis servidores) y la `.254` (que es nuestro router virtual de HSRP). Esas llaves no se le entregan a nadie, van guardadas bajo llave en mi oficina"_.
+
+Se escribe fuera de los contenedores (en el modo de configuración global) y se ve así:
+
+```
+Router(config)# ip dhcp excluded-address 192.168.10.1 192.168.10.10
+Router(config)# ip dhcp excluded-address 192.168.10.254
+```
+
+⚠️ LA ADVERTENCIA DE "LLEGASTE TARDE" (Por qué el profe lo hace al final)
+
+> **En Packet Tracer, si conectas las computadoras antes de poner las exclusiones, el DHCP empezará a regalar IPs de inmediato. Si le regala la `.254` a una PC antes de que crees HSRP, generarás un conflicto de IPs y la red se volverá loca.**
+
+Por eso tu profe espera a tener todo bien estructurado en su cabeza y en la pizarra para lanzar las exclusiones. Así se asegura de bloquear todas las IPs prohibidas al mismo tiempo antes de encender las interfaces y dejar pasar el tráfico real.
+
+## 6_Ponerle un guardaespaldas a las IPs VIP (Muy Importantes)
+
+Como vimos antes, el robot DHCP es súper generoso y empieza a regalar IPs a lo loco a cualquiera que se conecte. Si no lo detienes, le podría dar la IP `.254` (tu puerta de enlace/HSRP) o la `.1` a un celular viejo que entró a la oficina. Cuando el router intente usar su propia IP, chocará con el celular, habrá un **conflicto de IPs** y esa sección de la red se va a apagar por completo.
+
+Para evitar eso, usas este comando **fuera** de los contenedores. Le das una lista de números prohibidos al robot para que los saque de su bolsa de regalos.
+
+Hay dos formas de usarlo (con rango o una sola):
+
+- **Ejemplo 1: Bloquear un rango completo (de la 1 a la 10):**
+    
+    ```C
+    Router(config)# ip dhcp excluded-address 192.168.10.1 192.168.10.10
+    ```
+    
+
+    _Aquí le dices: "Desde la .1 hasta la .10 están prohibidas. Guárdamelas para servidores, impresoras o routers reales"._
+- **Ejemplo 2: Bloquear una sola IP específica (la de HSRP):**
+    
+    ```C
+    Router(config)# ip dhcp excluded-address 192.168.10.254 <= esta es la del HSRP
+    ```
+
+    _Al poner un solo número, el router entiende que solo debe proteger esa IP en específico._
+
+
+
+⚠️ LA ADVERTENCIA DEL "REPARTIDOR VELOZ"
+
+> **¡Escribe las exclusiones ANTES de activar las interfaces del router o conectar las PC!**
+
+En Packet Tracer, en cuanto una computadora se conecta y ve un puerto encendido, dispara una solicitud DHCP en microsegundos. Si no has escrito el comando `excluded-address`, el robot le entregará las primeras IPs disponibles (la `.1`, la `.2`, etc.). Si pones el comando de exclusión _después_, el router te dirá que la IP ya fue entregada y tendrás que ir PC por PC reiniciando la tarjeta de red para arreglar el desastre. ¡Primero se bloquea, luego se prende la red!
+
+## 7_
 # Para ver el registro interno del equipo 
+
 ```C
 show arp
 ```
