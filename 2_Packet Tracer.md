@@ -4,6 +4,369 @@ minDepth: 1
 maxDepth: 6
 listStyle: number
 ```
+
+
+
+# **Construir las 16 salas de espera virtuales para los administradores**.
+
+En lugar de usar el clásico `0 4`, escribió **`line vty 0 15`** en el modo de configuración global (`Router(config)#`).
+
+🔍 El comando desarmado palabra por palabra
+
+- **`line`**: Le avisa al router que vamos a configurar una de sus "líneas" o puertos de entrada.
+- **`vty`**: Significa _Virtual Teletype_ (Teletipo Virtual). En cristiano: son los **puertos virtuales o invisibles** del router. El router no tiene un cable físico que se llame "VTY"; son entradas digitales para la gente que se conecta desde lejos a través de la red (usando SSH o Telnet).
+- **`0 15`**: **Aquí está el gran truco.** Estos números definen **cuántas personas se pueden conectar al mismo tiempo** al router de forma remota.
+    - En las redes se empieza a contar desde el número cero.
+    - Si cuentas desde el **0 hasta el 15**, hay exactamente **16 líneas disponibles**.
+    - Eso significa que el router abrirá 16 "salas de espera virtual" en su memoria. Si hay una emergencia gigante, 16 ingenieros diferentes de la empresa podrían iniciar sesión al mismo tiempo desde sus casas para trabajar juntos en el router. Si llega el ingeniero número 17, el router le dirá "Líneas ocupadas, intente más tarde".
+
+🕵️‍♂️ ¿Por qué  usó `0 15` en lugar de `0 4`?
+
+Tradicionalmente, los routers viejos solo soportaban 5 conexiones simultáneas (`0 4`). Pero hoy en día, los equipos Cisco modernos (y los que simula Packet Tracer por defecto) vienen con soporte para 16 líneas (`0 15`) o incluso más.
+
+Tu profe usó `0 15` por **seguridad total**. Si tú solo configuras el rango `0 4`, dejas las líneas de la 5 a la 15 "libres y sin contraseña". Un hacker listo podría intentar colarse por la línea 5 aprovechando que te dio pereza configurarla. Al poner `0 15`, te aseguras de aplicarle el candado a **todas las puertas virtuales del router al mismo tiempo**.
+
+⚠️ LA ADVERTENCIA DE "EL COMANDO EN BLANCO"
+
+> **Al darle _Enter_ a `line vty 0 15`, el prompt cambiará a `Router(config-line)#`. ¡Cuidado! Estar ahí adentro no significa que SSH ya esté funcionando. Si te sales en este momento sin poner los comandos de activación, las 16 puertas se quedarán cerradas con llave y nadie podrá entrar.**
+
+Es como si hubieras construido los 16 pasillos en el hotel, pero todavía no le has dicho al recepcionista qué tipo de clientes puede dejar pasar, ni qué identificación pedirles.
+
+## 1_**Activar los guardias y ponerle temporizador a las salas de espera**
+
+### 1_🔍 Los 4 comandos desarmados paso a paso
+
+#### 1_password vty
+
+- **¿Qué hace?** Le asigna la contraseña "vty" a las líneas virtuales.
+- **La realidad técnica:** Como aprendimos en nuestra investigación de las versiones, las líneas físicas y virtuales de Cisco **te obligan** a usar la palabra `password` (aquí no puedes usar `secret`). Al poner `password vty`, le dejas una clave base a la línea. Sin embargo, no te preocupes por la seguridad, porque más abajo verás cómo el comando `login local` anula esta contraseña débil y activa algo mucho mejor.
+
+#### 2_session-limit 120`
+
+- **¿Qué hace?** Cambia las reglas del hotel que vimos antes. Recuerdas que al poner `0 15` abrimos 16 salas de espera virtuales. Con `session-limit 120`, tu profe cometió un pequeño error de tipeo o usó un comando de límite de tiempo modificado. En los equipos Cisco reales, este comando sirve para limitar cuántas sesiones máximas se permiten simultáneamente (y el rango suele ser menor) o para configurar el tiempo de espera si se combina con `exec-timeout`
+
+- _Asumiendo la lógica de seguridad de tu profe:_ Lo que está haciendo aquí es **ponerle un temporizador de expulsión**. Si un ingeniero entra al router por SSH, se va a almorzar y deja la sesión abierta en su laptop, el router cuenta el tiempo. Al pasar el límite, el router le da una patada virtual y cierra la sesión automáticamente para que nadie más use esa computadora descuidada.
+
+#### 3_transport input ssh
+
+- **¿Qué hace?** **Este es el filtro definitivo.** Le dice al router: _"A estas 16 líneas virtuales SOLO se puede entrar usando el protocolo seguro SSH"_.
+- **Por qué es vital:** De fábrica, las líneas `vty` aceptan tanto SSH como el inseguro **Telnet** (el que mandaba las contraseñas desnudas por el cable). Al escribir este comando, bloqueas y apagas Telnet para siempre. Si un hacker intenta conectarse usando Telnet, el router le cerrará la puerta en la cara inmediatamente sin siquiera pedirle contraseña.
+
+#### 4_login local
+
+- **¿Qué hace?** Le dice al router: _"Oye, cuando alguien intente entrar por SSH, no le pidas una contraseña genérica de línea. Ve a tu memoria interna, busca la lista de usuarios locales que creamos antes, y exígele su nombre de usuario y su contraseña encriptada"_.
+- **La magia final:** Este comando es el que activa al usuario **`admin` con nivel 15 y clave `1234`** (o `secret`) que configuramos al principio. Borra la necesidad de usar el comando `password vty` del paso 1 y obliga a que cada ingeniero use su propia cuenta con su respectivo nivel de privilegio.
+
+#### 5_🎨 El dibujo mental de lo que acabas de hacer:
+
+Imagina que un ingeniero de la empresa intenta entrar al router desde su computadora:
+
+1. Intenta entrar por Telnet -> **Rechazado** por el comando `transport input ssh`.
+2. Intenta entrar por SSH -> **Aceptado**, la puerta se abre.
+3. El router le dice: _"¿Quién eres?"_ -> Activado por el comando `login local`.
+4. El ingeniero escribe: Usuario `admin`, clave `1234` -> Entra directo al **Nivel 15 (Modo Dios)** porque su usuario ya venía con ese poder.
+5. El ingeniero se distrae viendo TikTok y deja la sesión abierta -> El router cuenta el tiempo y a los minutos lo expulsa gracias al `session-limit`.
+
+#### 6_⚠️ LA ADVERTENCIA DE "EL CANDADO SIN LLAVE"
+
+> **¡NUNCA escribas el comando `login local` si antes no has creado al menos un usuario con `username` en el modo de configuración global!**
+
+Si cometes el error de poner `login local` en un router vacío, el router guardará el comando felizmente. Pero cuando intentes conectarte por SSH, el router te pedirá usuario y contraseña. Como no creaste ninguno antes, **ninguna clave va a funcionar** y te habrás quedado encerrado fuera de tu propio router de [Packet Tracer](https://www.packettracernetwork.com/download/download-packet-tracer.html). Te tocará borrar el laboratorio y empezar desde cero.
+
+# Subirle el nivel al escudo del router (Pasar de madera a vibranium)
+
+Justo después de fabricar las llaves de seguridad con el comando `crypto key generate rsa`
+
+, el paso obligatorio para blindar el router es escribir **`ip ssh version 2`** en el modo de configuración global (`Router(config)#`).
+
+⚡ Explicación rápida
+
+Cuando tú creas las llaves RSA con el comando anterior, el router activa por defecto la **Versión 1 de SSH**. El problema es que la Versión 1 se inventó hace muchísimos años y los hackers ya le encontraron agujeros de seguridad (vulnerabilidades). Un atacante con conocimientos intermedios podría interceptar tus datos en el cable y descifrar tu contraseña `1234`.
+
+Al escribir `ip ssh version 2`, le estás diciendo al router: _"Oye, apágame por completo el sistema viejo e inseguro. A partir de ahora, solo vas a aceptar conexiones que usen el protocolo SSH Versión 2"_, que utiliza algoritmos de encriptación modernos, ultra seguros y que nadie ha podido romper hasta el día de hoy.
+
+
+⚠️ LA ADVERTENCIA DEL "TAMAÑO IMPORTA" (¡Mucho ojo con esto!)
+
+> **Si intentas escribir `ip ssh version 2` pero cuando creaste las llaves RSA (en el comando anterior) le pusiste un tamaño de 512 bits, el router te va a escupir un error en la pantalla y NO te va a dejar activar la versión 2.**
+
+La versión 2 de SSH es tan estricta con la seguridad que **exige como mínimo una llave de 768 bits** para poder funcionar (aunque, como ya aprendiste, los ingenieros de verdad usan **1024 o 2048 bits** por estándar profesional). Si tu llave es muy pequeña y débil, el router preferirá quedarse en la versión 1 antes que dejarte activar la versión 2 con un escudo mediocre.
+
+🕵️‍♂️ Un detalle de Packet Tracer:
+
+En las computadoras de [Packet Tracer](https://www.packettracernetwork.com/download/download-packet-tracer.html), cuando entras a la sección de "Command Prompt" (la terminal negra) para conectarte al router de forma remota, el comando se escribe así:
+
+```
+PC> ssh -l admin 192.168.10.254
+```
+
+
+_(La `-l` significa "login" y luego pones el usuario `admin` que creaste con tu profe)._ Gracias a que activaste la versión 2, esa conexión será un túnel impenetrable.
+
+## 1_**SOLO EXISTEN DOS VERSIONES:** SSHv1 **y** [SSHv2](https://www.emtec.com/ssh/ssh-v2.html)
+
+Todos los fabricantes de tecnología del planeta (Cisco, Huawei, Juniper, HP, e incluso tu propia computadora con Windows, Mac o Linux) se pusieron de acuerdo y usan exactamente las mismas dos versiones universales para que todo pueda conectarse entre sí de forma estandarizada.
+
+Para que lo tengas súper claro y escaneable para tus notas, aquí tienes la tabla con las versiones de SSH que existen, sus capacidades y los tamaños de llave que soportan:
+
+### 📊 Comparativa de Versiones Universales de SSH
+
+|Versión de SSH|Estado Actual|Seguridad|Tamaño de Llave RSA Mínimo|Tamaño Recomendado (Vida Real)|Explicación Técnica Rápida|
+|---|---|---|---|---|---|
+|**SSHv1** (Versión 1)|**Obsoleto / Prohibido**|❌ Muy Inseguro (Tiene fallas graves)|512 bits|_No usar jamás_|Se inventó en 1995. Es vulnerable a hackeos donde interceptan el cable y te roban la contraseña.|
+|**SSHv2** (Versión 2)|**Estándar Actual (El Rey)**|**Ultra Seguro (Impenetrable)**|768 bits _(Cisco exige ≥ 768 para activarlo)_|**2048 bits** o más|Se inventó en 2006. Rediseñó por completo la seguridad. Es el que activaste con el comando `ip ssh version 2`.|
+
+
+### 🔍 ¿Qué significan esos números de bits (512, 1024, 2048)?
+
+Para entenderlo de forma sencilla: el número de bits es **el tamaño del candado digital**.
+
+- Una llave de **512 bits** es como un candado de combinación de 3 números: una computadora moderna probando combinaciones súper rápido lo puede abrir en minutos.
+    
+- Una llave de **2048 bits** genera una combinación matemática tan ridículamente gigante que, si pusiéramos a todas las computadoras del mundo a intentar adivinarla juntas al mismo tiempo, **tardarían miles de años en romperla**. Por eso el estándar profesional actual en las empresas es configurar **2048 bits**.
+
+### ⚠️ LA ADVERTENCIA DE COMPATIBILIDAD
+
+> **Si dejas el router por defecto (que acepta SSHv1 y v2 al mismo tiempo), un hacker sofisticado puede usar un truco llamado "Ataque de degradación" (_Downgrade Attack_). Obliga a tu router a hablar en SSHv1 para poder romper la seguridad.**
+
+Al escribir el comando específico de tu profe `ip ssh version 2`, estás borrando a SSHv1 del mapa. El router se vuelve sordo a la versión 1 y la seguridad queda blindada al 100%.
+
+# Fabricar los escudos criptográficos del router
+**si no tienes configurados el `hostname` y el** ==**`ip domain-name`, el router te va a rebotar el comando en la cara** con un mensaje de error==.
+
+## 1_🧠 ¿Por qué el router te obliga a tener Hostname y Dominio?
+
+El comando `crypto key generate rsa` sirve para **crear un par de llaves digitales (una pública y una privada)**. Imagina que el router va a fabricar una caja fuerte digital para que cuando tú te conectes por SSH, tus contraseñas viajen protegidas por el cable y ningún hacker las pueda interceptar.
+
+Para firmar y crear ese certificado de seguridad, el algoritmo matemático (llamado **RSA**) necesita obligatoriamente un **Nombre Completo (Fichado)** del dispositivo.
+
+Si dejas los datos de fábrica, pasaría esto:
+
+- **Nombre de fábrica:** `Router`
+- **Dominio de fábrica:** No tiene.
+- **Nombre completo:** `Router.` (No sirve).
+
+Si el router intentara crear la llave con el nombre "Router", y en tu empresa hay 20 routers llamados igual, las llaves digitales serían idénticas y un hacker podría abrir todas las cajas fuertes de la red usando la misma llave. Por seguridad, Cisco bloquea el comando.
+
+Cuando tú sigues los pasos de tu profe y pones:
+
+1. `hostname R1-MEDELLIN`
+2. `ip domain-name nexo.com`
+
+El router junta las dos piezas y dice: _"¡Perfecto! Mi nombre único en el mundo es_ [nexo.com](http://nexo.com/)_"_. Con ese dato, el algoritmo matemático ya puede mezclar las letras y los números para crear una llave digital que sea **única en todo el planeta**.
+
+
+## 2_🛠️ ¿Qué pasa cuando le das Enter a ese comando?
+
+En cuanto escribes `crypto key generate rsa` y le das _Enter_, [Packet Tracer](https://www.packettracernetwork.com/download/download-packet-tracer.html) te va a hacer una pregunta en inglés:
+
+> _“How many bits in the modulus [512]:”_ (¿De qué tamaño quieres la llave?)
+
+Ahí tú tienes que escribir un número (los profes suelen usar **1024** o **2048**):
+
+- **512 bits:** Es una llave pequeña. Es rápida de crear, pero hoy en día es tan débil que un celular moderno la puede hackear en minutos.
+- **1024 bits:** Es el mínimo que te acepta el router para activar la versión segura de SSH (SSH v2).
+- **2048 bits:** Es el estándar profesional actual. Es una caja fuerte digital ultra pesada y segura.
+
+## 3_⚠️ LA ADVERTENCIA DE "EL EFECTO BORRADOR"
+
+> **Si en el futuro se te ocurre cambiar el `hostname` o el `domain-name` del router, las llaves RSA que creaste hoy se VAN A BORRAR automáticamente.**
+
+El router es tan estricto que si nota que cambiaste de nombre (por ejemplo, de `R1` a `RouterJefe`), pensará: _"Este ya no es mi certificado oficial"_, destruirá la llave RSA y el acceso remoto (SSH) se va a apagar de inmediato hasta que vuelvas a escribir el comando `crypto key generate rsa`. ¡Ten mucho cuidado con cambiar nombres a mitad de un proyecto!
+# Seguridad en las claves importante 
+
+## 1_Encriptar
+```c
+username admin privilege 15 secret 1234
+```
+
+El router va a agarrar el "1234", lo va a triturar usando un algoritmo matemático (encriptación), y cuando alguien intente mirar la configuración, en lugar de "1234" verá algo horrible como `$1$mERr$hx5gH...`
+
+## 2_El truco de "ocultar" con `service password-encryption`
+
+Cisco inventó un punto medio. Si por alguna razón de la vida estás obligado a usar el comando `password 1234`, puedes activar un comando global llamado
+
+```c
+Router(config)# service password-encryption
+```
+
+Este comando funciona como un "maquillaje barato". Agarra todas las contraseñas que creaste con la palabra `password` y las transforma visualmente en números raros (por ejemplo, el `1234` se convierte en `08314927`).
+
+No es tan seguro como `secret` (porque un hacker experto puede romper ese maquillaje en dos segundos usando páginas web gratis), pero al menos evita que el compañero que se pare detrás de ti te lea la clave en la pantalla.
+
+
+⚠️ LA ADVERTENCIA DE ORO PARA TUS EXÁMENES
+
+> **En la vida real y en los exámenes de certificación de Cisco (CCNA), usar `password` en lugar de `secret` para un usuario de nivel 15 te costará puntos negativos inmediatos.**
+
+Tu profe probablemente usó `password 1234` en la pizarra porque es más rápido de escribir o para ver si ustedes estaban despiertos y pillaban el riesgo de seguridad. 
+
+## 3_Que pasa si cambio 
+
+Si cambias la palabra `password` por `secret` en los comandos que has visto con tu profe (como **`username`** o **`enable`**), el router **NO te dará ningún error de comando no encontrado**. El comando va a funcionar a la perfección y tu contraseña quedará encriptada y protegida de inmediato.
+Sin embargo, hay **un lugar específico** en donde Cisco te obliga a usar la palabra `password` sí o sí. Aquí te dejo la lista exacta para que no vayas a cometer un error en tus prácticas de [Packet Tracer](https://www.packettracernetwork.com/download/download-packet-tracer.html)
+✅ Los comandos donde SÍ puedes (y debes) cambiar `password` por `secret`
+
+En estos dos casos, la palabra `secret` es perfectamente válida, no arroja error y es la mejor práctica de seguridad del mundo: [[1](https://community.cisco.com/t5/networking-knowledge-base/understanding-the-differences-between-the-cisco-password-secret/ta-p/3163238)]
+
+1. **Creación de usuarios locales (El comando de tu profe):**
+    - _Inseguro:_ `username admin privilege 15 password 1234`
+    - _Seguro y válido:_ `username admin privilege 15 **secret** 1234` [[1](https://networklessons.com/system-management/user-mode-and-privileged-mode-security), [2](https://study-ccna.com/cisco-privilege-levels/)]
+    
+2. **Contraseña para entrar al Modo Dios (`enable`):**
+    - _Inseguro:_ `enable password cisco`
+    - _Seguro y válido:_ `enable **secret** cisco` [[1](https://www.ciscomadesimple.be/2012/03/04/ios-enable-password-vs-enable-secret/), [2](https://www.informaticar.net/cisco-ios-basics-passwords/)]
+
+Si los escribes con `secret`, el router se pondrá feliz y triturará la clave usando algoritmos matemáticos avanzados (como MD5 o SHA-256) para que nadie te la pueda robar. [[1](https://community.cisco.com/t5/networking-knowledge-base/understanding-the-differences-between-the-cisco-password-secret/ta-p/3163238), [2](https://thisbridgeistheroot.com/blog/upgrading-your-cisco-ios-passwords)]
+
+---
+
+❌ El único comando donde NO se puede usar `secret` (¡Te dará error!)
+
+Existe una sección del router llamada **Líneas de acceso** (que sirve para ponerle contraseña al cable de consola o a las conexiones virtuales de Telnet/SSH). La ruta se ve más o menos así: [[1](https://www.informaticar.net/cisco-ios-basics-passwords/)]
+
+
+```c
+Router(config)# line console 0
+Router(config-line)# password 1234
+```
+
+
+> ⚠️ **La Advertencia de Error:** Si dentro de `Router(config-line)#` intentas escribir `secret 1234`, el router **SÍ te arrojará un error inmediato** de comando no reconocido. [[1](https://www.reddit.com/r/ccna/comments/z1cdft/what_is_the_difference_between_enable_secret/)]
+
+Cisco diseñó las líneas físicas para que **únicamente** acepten la palabra clave `password`. Para proteger esa contraseña de miradas chismosas en la configuración, estás obligado a usar el truco del que hablamos antes: el comando global `service password-encryption`. [[1](https://www.reddit.com/r/ccna/comments/z1cdft/what_is_the_difference_between_enable_secret/), [2](https://www.informaticar.net/cisco-ios-basics-passwords/), [3](https://geek-university.com/service-password-encryption-command/)]
+
+## 4_Diferencia de passwor y secret
+
+Cisco inventó sus sistemas operativos de red (llamados IOS) hace más de **30 años** (en los años 80 y 90). En esa época, los routers tenían procesadores súper débiles, parecidos al cerebro de una calculadora vieja.
+
+- El comando `password` no consume nada de energía porque guarda el texto tal cual lo escribes.
+    
+- El comando `secret` tiene que hacer matemáticas complejas (encriptación) para triturar la contraseña.
+
+En los años 90, si le ponías `secret` a todo, el router se ponía lento solo por procesar la contraseña. Por eso nació primero `password`. Con los años, los routers se volvieron súper potentes y se inventó `secret`, pero Cisco no podía borrar `password` del mapa de la noche a la mañana porque rompería el sistema de millones de equipos antiguos.
+
+
+
+# Darle una cédula de identidad digital al router
+
+**lo hizo porque en este punto lo está configurando para el ROUTER mismo, no para las computadoras.** El dominio del DHCP era un regalo para los usuarios; el dominio en `Router(config)#` es un requisito obligatorio para activar los superpoderes del router.
+
+## 1_🔑 El objetivo oculto: Activar SSH (Control remoto seguro)
+
+Tu profe ya creó un usuario administrador (`username admin privilege 15 password 1234`). El siguiente paso lógico en una red real es hacer que el ingeniero pueda entrar a controlar el router desde su oficina, sin tener que caminar hasta el cuarto de servidores con un cable físico. Eso se hace con un protocolo llamado **SSH (Secure Shell)**.
+
+Para que [SSH](https://www.cloudflare.com/es-es/learning/access-management/what-is-ssh/) funcione, el router tiene que encriptar (proteger) la conexión con una **clave matemática ultra secreta**. Y para fabricar esa clave, el router te exige obligatoriamente dos datos para firmar el contrato:
+
+1. Un nombre (que ya lo tiene: `Router`).
+2. Un apellido o dominio (que se lo das con `ip domain-name` miempresa.com).
+
+## 2_🧠 ¿Por qué no sirvió el del DHCP?
+
+Imagina que tú trabajas en una empresa y compras teléfonos corporativos para los clientes (las PC) y en la configuración les pones que el código de la empresa es _Nexo_. Eso no significa que **tú** automáticamente tengas un correo con ese dominio; tú tienes que ir a registrar tu propia cuenta.
+
+- El comando dentro del DHCP (`domain-name`) era solo un papelito que el router le entregaba a las PC para que **ellas** supieran su apellido. El router no se lo quedaba para sí mismo.
+- El comando en configuración global (`ip domain-name`) cambia el nombre interno del router. Si el router se llamaba `Router`, ahora su nombre oficial para el mundo de la seguridad informática será **`://`**miempresa.com.
+
+Sin ese "apellido oficial" en el modo global, el router se negará rotundamente a generar las llaves de seguridad para SSH y no te dejará administrarlo a distanci
+
+## 3_⚠️ LA ADVERTENCIA DE LAS LLAVES DE SEGURIDAD
+
+> **Si pones `ip domain-name` pero el router todavía tiene el nombre de fábrica (`Router`), el sistema te dejará avanzar, pero es una mala práctica. Lo primero que debes hacer antes del dominio es cambiar el nombre del aparato con el comando `hostname`.**
+
+Si dejas el nombre como `Router` y le pones el dominio, la llave de seguridad se creará con el nombre `://`miempresa.com. Si tienes 10 routers en la empresa y todos se llaman igual, los sistemas de seguridad se van a confundir y bloquearán las conexiones. Por eso la regla de oro es: 1) `hostname`, 2) `username`, 3) `ip domain-name`.
+
+# Crear la cuenta de un usuario con las manos amarradas
+
+## 1_Crear la cuenta del Administrador
+```C
+username admin privilege 0 secret [contraseña] (o a veces usan password en lugar de secret
+```
+
+- **`username admin`**: Le dice al router: _"Crea un usuario local en tu memoria que se llame 'admin'"_. Es exactamente igual a cuando creas un perfil de usuario en Windows o Netflix.
+
+- **`privilege 0`**: **Aquí está el gran truco.** Los routers de Cisco tienen niveles de poder del **0 al 15**.
+    - El nivel **15** es el de Dios (puedes borrar configuraciones, apagar interfaces, cambiar contraseñas).
+    - El nivel **1** es el de usuario normal (puedes mirar algunas cositas, pero no cambiar nada).
+    - El nivel **0** es... **el calabozo**. Es el nivel de privilegio más bajo que existe. Al ponerle `privilege 0`, ese usuario `admin` prácticamente no puede hacer nada. Solo tiene permiso para tres comandos tontos: iniciar sesión (`login`), cerrar sesión (`logout`) y habilitar el modo avanzado si se sabe la contraseña de administrador (`enable`).
+
+## 2_**Crear la cuenta del Administrador Supremo (Modo Dios)**.
+
+```c
+username admin privilege 15 password 1234
+```
+
+Aquí es donde ves la diferencia real con el comando de nivel 0:
+
+- **`username admin`**: Crea el usuario con el nombre "admin" en la memoria del router.
+- **`privilege 15`**: **¡Aquí está el poder total!** Como ya te habías aprendido, el nivel 15 es el máximo nivel de autoridad en un equipo Cisco. Al ponerle `15`, le estás diciendo al router: _"Cuando este usuario inicie sesión, no lo dejes en la salita de espera (`Router>`), mételo directamente hasta la cocina con el signo de número (`Router#`)"_
+    
+    . Este usuario no necesita usar el comando `enable` ni ascensores; ya nace en el piso más alto.
+- **`password 1234`**: Esta es la llave secreta para entrar a esa cuenta.
+
+
+🕵️‍♂️ hacer seguimientos (El secreto de la auditoría)
+
+Imagina que trabajas en una empresa grande con 20 ingenieros de redes. Si todos entran al router usando la misma contraseña genérica, y de repente un viernes por la tarde la red se cae porque alguien borró la configuración... ¿A quién le echas la culpa? Todos van a decir: _"Yo no fui"_.
+
+Para solucionar eso, se crean **usuarios locales**
+
+para cada persona (ej: `username carlos`, `username andrea`).
+
+Cuando activas un sistema de seguimiento en el router (llamado **AAA** o registros de _Syslog_), el router empieza a escribir una bitácora en secreto:
+
+> _"A las 4:15 PM, el usuario 'carlos' inició sesión. A las 4:17 PM, el usuario 'carlos' borró la VLAN 10"_.
+
+¡Boom! Atrapado. A eso se refería tu profe con hacer seguimientos. Puedes saber exactamente **quién, cuándo y qué** comando escribió cada persona dentro del router.
+
+### 1_Privilegios
+
+En [Cisco](https://www.cisco.com/site/es/es/index.html), que es el rey de las redes y  en [Packet Tracer](https://www.packettracernetwork.com/download/download-packet-tracer.html), existen exactamente **16 niveles de privilegio**, que van numerados del **0 al 15**.
+
+Para responder tu segunda duda rápidamente: **No estás obligado a crear un solo nivel por persona**, pero en la práctica real sí se le asigna un único nivel a cada usuario basado en su puesto de trabajo para mantener el orden. Lo que sí puedes hacer es crear **muchos usuarios diferentes en el mismo nivel** (por ejemplo, tener 5 ingenieros y que los 5 sean nivel 15).
+
+A este sistema de niveles los ingenieros lo llaman **RBAC** (Control de Acceso Basado en Roles), pero para que te lo aprendas al pie de la letra, imagínalo como **los niveles de acceso de una base militar secreta**.
+
+#### 🏛️ Los 3 Niveles "Por Defecto" (Los que ya vienen configurados de fábrica)
+
+Cisco creó la mayoría de sus sistemas pensando en tres niveles principales. Si tú no inventas nada raro, el router viene con estos tres listos:
+
+- **Nivel 0 (El Calabozo / Acceso de Visitante):**  
+    Es el nivel más bajo. No puedes ver absolutamente nada de la configuración del router. El usuario solo puede escribir `login` (iniciar sesión), `logout` (salir) y `enable` (intentar subir de nivel). Sirve para que alguien compruebe si el equipo responde, pero sin tocar nada.
+- **Nivel 1 (Modo Usuario Normal / Soporte Básico):**  
+    Cuando entras a un router por primera vez y el prompt se ve así: `Router>`, estás en el nivel 1. Aquí puedes usar comandos básicos como `ping` (para ver si hay conexión) o `show clock` (para ver la hora). No puedes ver la configuración guardada (`show running-config`) ni puedes cambiar nada. Es el nivel para un técnico junior que solo va a revisar si los cables están bien.
+- **Nivel 15 (Modo Dios / Administrador Total):**  
+    Cuando escribes el comando `enable` y entras al prompt con el signo de número `Router#`, saltas automáticamente al nivel 15. Aquí tienes **control absoluto** del hardware. Puedes borrar la memoria, cambiar las contraseñas, apagar interfaces y crear los DHCP pools de los que hablamos antes. Un solo error en este nivel y dejas a toda la empresa sin internet.
+
+---
+
+🏗️ Los Niveles del 2 al 14 (Los Niveles Personalizados)
+
+**¿Qué pasa con todos los números del medio?** De fábrica, los niveles del 2 al 14 vienen **completamente vacíos** y se comportan exactamente igual al nivel 1.
+
+Cisco los dejó en blanco para que **tú los diseñes a tu antojo** usando comandos avanzados en el router. Tú puedes decidir qué comandos específicos puede usar cada número.
+
+Aquí te pongo un ejemplo de cómo los organiza una empresa real:
+
+- **Niveles 2 al 5 (Equipo de Monitoreo):** Les das permiso exclusivo para ver mapas y estadísticas de tráfico con comandos `show`, pero nada más.
+- **Niveles 6 al 10 (Técnicos de Campo):** Les das permiso de usar comandos `show` y además comandos para reiniciar interfaces (`shutdown` / `no shutdown`) por si un cable falla, pero les prohíbes cambiar contraseñas o borrar redes.
+- **Niveles 11 al 14 (Supervisores de Seguridad):** Les das permisos casi totales para crear usuarios y ver logs de seguimiento, pero no pueden tocar el enrutamiento de internet.
+
+---
+
+⚠️ LA ADVERTENCIA DE "LA TRAMPA DEL ENABLE"
+
+> **Cualquier usuario que esté en los niveles del 1 al 14 puede saltar al Nivel 15 (Modo Dios) con solo escribir el comando `enable`, A MENOS que le pongas una contraseña específica a cada nivel.**
+
+Si creas un usuario con `privilege 5` para que no rompa nada, pero no proteges el comando `enable` general con una contraseña fuerte (`enable secret`), ese usuario va a entrar a tu router, va a escribir `enable`, y el router lo va a subir al nivel 15 de inmediato. ¡Tu seguridad se caería a pedazos!
+
+⚠️ LA ADVERTENCIA DEL "ADMINISTRADOR SIN PODER"
+
+> **Llamar a un usuario "admin" pero ponerle `privilege 0` es una trampa mental. Cualquiera que vea el nombre pensará que es el jefe, pero cuando intente configurar algo, el router le dirá "Comando rechazado".**
+
+Normalmente, si quieres crear un administrador de verdad, debes usar `privilege 15`.
+
+
 # Para configurar DHCP y HSRP
 
 ## 1_Crear el contenedor
