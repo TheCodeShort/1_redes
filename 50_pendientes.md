@@ -95,6 +95,25 @@ Si configuras HSRP, los dos routers se ponen de acuerdo y crean un **Router Virt
 - El Router B (llamado **Standby**) se queda callado, escuchando al Router A. Si el Router A deja de enviar señales (porque se dañó el cable o se fue la luz), el Router B asume la IP virtual `172.16.20.1` automáticamente.
 - **Para los usuarios es transparente:** Ninguna PC se da cuenta del daño porque su Gateway (`172.16.20.1`) sigue respondiendo.
 
+
+# TACACS 
+
+El Filtro de las Tres "A" (Authentication, Authorization, Accounting)
+
+⚡ **Explicación rápida:** TACACS+ es un protocolo de Cisco que se encarga de tres tareas sagradas cuando tú intentas entrar a un router o switch: verificar quién eres (Autenticación), qué tienes permitido hacer (Autorización) y registrar qué comando exacto escribiste (Contabilidad o Auditoría).
+
+🧠 **La Lógica de Fondo:** En lugar de que cada router trabaje por su cuenta, todos le consultan a este servidor central. Funciona así en el cerebro de la red:
+
+- **1ª A - Autenticación (¿Quién eres?):** Cuando tú lanzas tu comando `ssh -l nexo 172.16.1.254`, el switch le pregunta al servidor TACACS: _“Oye, vino un tipo llamado nexo con esta contraseña, ¿lo dejo pasar?”_. El servidor revisa su base de datos central y dice: _“Sí, su contraseña es correcta, déjalo entrar”_.
+- **2ª A - Autorización (¿Qué puedes hacer?):** Una vez adentro, tú intentas tirar un comando peligroso como borrar la configuración (`erase startup-config`). El switch vuelve a consultar al TACACS: _“Oye, nexo quiere borrar todo, ¿tiene permiso?”_. El servidor responde: _“¡Nooo! Él es un usuario de nivel medio, deniégale ese comando”_.
+- **3ª A - Contabilidad / Accounting (¿Qué hiciste?):** Cada bendito comando que tú escribes y cada tecla que presionas se envía al servidor TACACS en tiempo real. El servidor guarda un archivo de texto (un log) que dice: _“El martes a las 9:30 PM, el usuario nexo entró al SW-CORE y cambió la IP de la VLAN 1”_.
+
+⚠️ **LA ADVERTENCIA:** ¡No confundas el servidor TACACS con el servidor **SYSLOG** que tienes a la izquierda en tu mapa!
+
+- El **SYSLOG** es el que almacena la información de _lo que le pasa a la red_ (si un cable se desconectó, si un puerto se quemó, si subió la temperatura del equipo).
+- El [TACACS+](https://www.tacacs.com/security-hub/what-is-tacacs/) almacena estrictamente la información de _lo que hacen los usuarios de TI_ dentro de los equipos.  
+    Si configuras mal el TACACS+ o el servidor se apaga y no configuraste un "plan de respaldo" local, **te quedarás completamente fuera de toda tu red**, porque ningún router sabrá a quién dejar entrar. ¡Se volverán paranoicos y bloquearán todas las puertas SSH!
+
 # siglog 
 
 monitor 

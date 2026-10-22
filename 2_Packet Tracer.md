@@ -5,7 +5,416 @@ maxDepth: 6
 listStyle: number
 ```
 
+# Syslog (abreviatura de _System Logging_ o Historial del Sistema)
 
+```c
+logging host {ip_servidor}
+```
+
+Este paso es mega importante. Es el equivalente a activar las cámaras de seguridad que graban todo lo que pasa en tu base militar y mandan el video a un búnker secreto (tu servidor) para que, si el router explota o se apaga, los videos queden a salvo en el servidor.
+
+## 📛  Desviar los Chismes de la Red al Búnker Central
+
+⚡ **Explicación rápida y ejemplo:** Le ordenas al router o switch que deje de guardar los historiales de eventos y errores solo en su memoria local temporal, y que empiece a mandar una copia de cada alerta en tiempo real a tu servidor **SYSLOG** del Data Center.
+
+```
+SW-CORE(config)# logging host 172.16.2.100
+```
+
+_(Nota: En tu mapa de **NexoSoft Labs**, esa IP apunta directo a tu cuadrito azul que dice `SERVER-SYSLOG/NTP`)._
+
+🧠 **La Lógica de Fondo:** Desarmemos el comando palabra por palabra:
+
+- **`logging`**: Le dice al procesador: _"Prepara el sistema de alertas e historiales del sistema (los logs)"_.
+- **`host`**: Avisa que la salida de esos datos va hacia un equipo externo en la red.
+- **`172.16.2.100`**: La dirección IP del servidor que tiene corriendo el software de Syslog.
+
+Cada vez que un cable se desconecte (`Interface ... changed state to down`), cada vez que alguien falle una contraseña por SSH, o cada vez que tú guardes la configuración, el switch empaqueta ese texto en un mini mensaje de red y lo dispara hacia esa IP para que quede registrado en el disco duro del servidor.
+
+⚠️ **LA ADVERTENCIA (El peligro de la red ciega):** Por defecto, los routers y switches guardan los logs en una memoria temporal llamada _Buffer_ (`logging buffered`). Si tu equipo de red se reinicia, sufre un apagón o un atacante malintencionado lo apaga a la fuerza, **¡ese historial local se borra por completo!** Si no tienes configurado el `logging host` hacia tu servidor externo, cuando el equipo encienda de nuevo no tendrás ni la menor idea de por qué se cayó o quién lo saboteó. ¡El Syslog externo es tu única evidencia forense!
+
+
+🕵️‍♂️ ¿Cómo verificar que tu equipo está enviando los chismes al servidor?
+
+Para auditar que el motor de logs está apuntando al lugar correcto, corremos el comando de verificación:
+
+
+```c
+SW-CORE# show logging
+```
+
+
+**La Lógica:** Al ejecutarlo, verás un reporte largo en pantalla. Tienes que buscar una línea que diga: **`Logging to 172.16.2.100`**. Si dice _enabled_, significa que el switch ya tiene el megáfono listo y está disparando las alertas hacia tu servidor del Data Center.
+
+## 📛 Expandir la Caja Negra del Dispositivo
+
+⚡ **Explicación rápida y ejemplo:** Le asignas un espacio de memoria RAM exacto dentro del equipo para almacenar las alertas locales, garantizando que el historial sea mucho más largo antes de que se empiece a borrar lo viejo.
+
+text
+
+```c
+SW-CORE(config)# logging buffered 20000
+```
+
+Usa el código con precaución.
+
+🧠 **La Lógica de Fondo:** Desarmemos qué pasa dentro de la memoria del aparato:
+
+- **`logging`**: Activa las instrucciones del sistema de reportes e historiales.
+- **`buffered`**: Le dice al procesador: _"Esta orden es para el búfer, es decir, el espacio reservado dentro de la memoria RAM local del switch"_.
+- **`20000`**: Este número es vital. Define el tamaño exacto del búfer medido en **Bytes**. De fábrica, Cisco suele dejar este espacio muy chiquito (por ejemplo, 4096 bytes). Al subirlo a `20000` bytes, le estás dando casi 5 veces más espacio a la memoria RAM para almacenar líneas de texto de los eventos.
+
+⚠️ **LA ADVERTENCIA (El peligro del desbordamiento y la RAM saturada):** Aunque es una excelente práctica agrandar el búfer para tener más historial local, **nunca debes poner un número exageradamente gigante** (como ponerle millones de bytes a un switch viejito). Recuerda que este espacio se reserva directamente de la **memoria RAM dinámica (DRAM)** del equipo, que es la misma memoria que usa el switch para mover los datos de los usuarios y calcular las rutas de red. Si saturas la RAM dándosela toda a los registros de texto, el switch podría quedarse sin memoria para procesar los paquetes, se pondrá ultra lento e incluso podría colapsar y reiniciarse solo. ¡`20000` a `64000` bytes es el punto dulce y seguro!
+
+🕵️‍♂️ ¿Cómo verificar el tamaño de tu nueva memoria de logs?
+
+Para comprobar que el procesador aceptó la ampliación de su caja negra, corremos nuestro comando de auditoría:
+
+```c
+SW-CORE# show logging
+```
+
+
+**La Lógica:** En las primeras líneas del reporte, vas a buscar una frase exacta que diga: **`Buffer logging: level debugging, 20000 bytes logged`**. Ahí comprobarás que tu switch expandió su memoria interna a los 20,000 bytes exactos que le ordenaste.
+
+
+
+##  📛 qué tan detallados y por dónde vas a escuchar los secretos del router y del switchNetwork Time Protocol)
+
+### 📛 Paso 1: `logging console` (El megáfono del cable azul)
+
+⚡ **Explicación rápida y ejemplo:** Le ordena al equipo que imprima todas las alertas y notificaciones en vivo directamente en la pantalla negra de la consola mientras estás conectado con tu cable físico.
+
+```c
+SW-CORE(config)# logging console
+```
+
+_(Nota: En la mayoría de los equipos Cisco viene encendido de fábrica, pero se pone explícitamente para asegurar que el canal esté abierto)._
+
+🧠 **La Lógica de Fondo:** Este comando le dice al procesador: _"Si pasa algo en el switch, escúpelo de inmediato en la pantalla de la terminal del tipo que está conectado por el puerto de Consola"_. Así, si desconectas un cable, te enteras en el segundo exacto porque te aparece un texto flotante en la pantalla.
+
+⚠️ **LA ADVERTENCIA:** Si estás trabajando por **SSH** de forma remota en lugar de usar el cable de consola físico, ¡este comando no te mostrará nada en tu pantalla! Para ver los logs flotantes por SSH, tendrás que usar un comando mágico en modo privilegiado llamado `terminal monitor`.
+
+### 📛 paso 2: El Interruptor Maestro de las Alertas
+
+⚡ **Explicación rápida y ejemplo:** `logging on` es el **interruptor general de luz** para todo el sistema de bitácoras del equipo. Si este interruptor está apagado (`no logging on`), el switch se vuelve completamente sordo y mudo: no enviará nada a la consola, ni al búfer, ni al servidor Syslog.
+
+text
+
+```
+SW-CORE(config)# logging on
+```
+
+Usa el código con precaución.
+
+🧠 **La Lógica de Fondo:** Desarmemos la arquitectura de Cisco IOS:  
+Tú puedes pasar horas configurando a dónde quieres mandar los chismes (`logging host`), qué tan detallados los quieres (`logging trap debugging`) y cuánto espacio reservar (`logging buffered 20000`). Pero todas esas configuraciones individuales se quedan "en pausa" esperando una orden superior. El comando `logging on` es el botón de **"PLAY"** o el interruptor maestro que le dice a la CPU: _"¡Ahora sí, enciende el motor de logs y empieza a aplicar todas las reglas que el ingeniero escribió!"_
+
+.
+
+⚠️ **LA ADVERTENCIA:** En la gran mayoría de los equipos Cisco reales y en casi todos los modelos de **Packet Tracer**, el comando `logging on` viene **encendido por defecto de fábrica**. Por eso, aunque tú no lo hayas escrito, es muy probable que tu switch ya estuviera guardando registros. **¡PERO OJO!** Si por alguna razón el sistema operativo de tu equipo vino con el motor apagado, o si otro ingeniero tiró un `no logging on` antes, tu red estará completamente ciega. Aunque tus otros comandos estén perfectos, **el equipo no registrará absolutamente nada**. ¡Por eso tu profesor lo pone explícitamente, para asegurarse al 100% de que el interruptor está arriba
+
+### 📛 Paso 3: `logging trap debugging` y los Rangos Sagrados (0 al 7)
+
+⚡ **Explicación rápida y ejemplo:** Le dice al switch o router **qué tan detallados** deben ser los mensajes que le va a mandar a tu servidor externo **SYSLOG** (`logging host`).
+
+```c
+SW-CORE(config)# logging trap debugging
+```
+
+
+🧠 **La Lógica de Fondo y los Rangos:** Cisco divide las alertas del universo en un rango matemático del **0 (Máxima Emergencia) al 7 (Chisme Completo / Diagnóstico)**. Desarmemos la escala de rangos:
+
+- **0 - Emergency:** ¡El equipo va a explotar o el sistema colapsó! (Inusable).
+- **1 - Alert:** Acción inmediata necesaria (ej: sensor de temperatura al límite).
+- **2 - Critical:** Condiciones críticas (ej: falló un módulo de hardware).
+- **3 - Error:** Condiciones de error (ej: una interfaz falló).
+- **4 - Warning:** Advertencias (ej: algo no anda del todo bien, cuidado).
+- **5 - Notification:** Eventos normales pero importantes (ej: **un puerto se encendió o se apagó**).
+- **6 - Informational:** Mensajes informativos (ej: un ingeniero guardó la configuración).
+- **7 - Debugging:** El nivel más alto de detalle. Muestra absolutamente todo lo que pasa dentro del procesador, bit por bit, paquete por paquete.
+
+Cuando tú escribes `logging trap debugging`, le estás diciendo al equipo: _"Quiero que le mandes al servidor Syslog el nivel 7 **Y TODO LO QUE ESTÉ POR ENCIMA DE ÉL** (es decir, del 0 al 7)"_. ¡Le estás pidiendo el registro completo sin filtros!
+
+⚠️ **LA ADVERTENCIA (El peligro de inundar la red):** Configurar el trap en nivel `debugging` (7) en una red real con miles de usuarios **es un peligro masivo**. El nivel 7 genera tanta información por segundo (cada paquetito que entra, cada negociación de protocolo) que puede saturar el procesador del router intentando escribir millones de líneas de texto. Además, podría inundar tu cable de red de pura basura informativa y llenar el disco duro de tu servidor **SERVER-SYSLOG** en un par de días. La buena práctica de ITIL en NexoSoft Labs dicta que en producción se debe usar el nivel **`informational` (6)** o **`notifications` (5)**, y solo activar el nivel `debugging` (7) por unos minutos si estás cazando un problema fantasma muy difícil de encontrar.
+
+
+
+## 📛 El Historial de Auditoría de Comandos Humanos
+
+⚡ **Explicación rápida y ejemplo:** Te metes a la configuración global del Router o del Switch y activas el servicio. A partir de ese segundo, el equipo generará una alerta de Syslog cada vez que alguien use comandos que afecten la configuración.
+
+
+```c
+SW-CORE(config)# logging userinfo
+```
+
+🧠 **La Lógica de Fondo:** Desarmemos qué pasa dentro de la CPU:
+
+- **`logging`**: Invoca al motor de bitácoras del sistema operativo.
+- **`userinfo`**: Le añade una regla específica: _"Registra la información del usuario cuando cambie de modo"_.  
+    Por defecto, [Cisco IOS](https://software.cisco.com/download/find/ios) no avisa de forma detallada si entras o sales del modo de configuración global (`configure terminal`). Al activar `logging userinfo`, el sistema generará un mensaje automático cada vez que un usuario cambie de nivel o entre a modificar cosas. Este mensaje viaja directo a tu búfer local (`logging buffered`) y a tu servidor central (`logging host`).
+
+⚠️ **LA ADVERTENCIA (El peligro del saboteador anónimo):** Si no activas este comando junto con el **`login local`** que configuraste al principio de la clase, el comando `logging userinfo` solo te dirá: _"Alguien entró a configurar por la línea VTY 0"_. Pero si tienes un equipo de 5 ingenieros en **NexoSoft Labs**, ¡no sabrás cuál de los 5 fue el que metió la pata! Para que este comando tenga verdadero valor legal y de auditoría bajo las normas ITIL, necesitas obligatoriamente que tus usuarios se logueen con sus nombres (`admin`, `nexo`). Así, el log dirá con precisión militar: **"El usuario `nexo` desde la IP 192.168.1.50 entró al modo de configuración global"**. ¡Ahí ya no hay forma de culpar a nadie más!
+
+
+🕵️‍♂️ ¿Cómo verificar que quedó activo en tu Router o Switch?
+
+Para confirmar que tu detective privado está trabajando en segundo plano, ejecutamos el comando de auditoría:
+
+text
+
+```c
+SW-CORE# show logging
+```
+
+
+Busca en la lista de características activas una línea limpia que diga de forma explícita: **`Logging Userinfo: enabled`**. ¡Si dice _enabled_, estás totalmente cubierto!
+
+
+
+# NTP (Network Time Protocol)
+
+Alerta de viaje en el tiempo! 🕰️💥 Lo que acaba de detectar tu profesor es un clásico en el mundo de las redes. Cuando sacas un switch Cisco de su caja o lo enciendes en [Packet Tracer](https://www.packettracernetwork.com/download/download-packet-tracer.html), el equipo cree que vive en el año **1993**
+
+o **1994** (la época en que se programaron esas versiones de software).
+
+Tener la hora mal en un switch corporativo es un peligro mortal para la auditoría, porque si un hacker entra a las 3:00 PM de hoy, el switch registrará en el SYSLOG: _"El intruso entró el 1 de marzo de 1993"_. ¡Sería imposible rastrearlo en el tiempo!
+
+**Este proceso también se hace para => Switch, Router,**
+
+## 📛 Paso 1: `ntp server {ip}` (Buscar al Reloj Maestro)
+
+⚡ **Explicación rápida y ejemplo:** Le das la dirección IP de un servidor de hora exacto (un Servidor NTP) para que el switch se sincronice automáticamente por red.
+
+
+```c
+SW-CORE(config)# ntp server {ip servidor NTP}
+```
+
+
+_(Nota: En tu mapa de **NexoSoft Labs**, esa IP debería ser la de tu servidor **`SERVER-SYSLOG/NTP`** que tienes en el Data Center)._
+
+🧠 **La Lógica de Fondo:** Desarmemos el comando:
+
+- **`ntp`**: Activa el protocolo de tiempo de red en el procesador.
+- **`server`**: Le dice al switch: _"Vas a ser un CLIENTE de este servidor, vas a obedecer la hora que él te dicte"_.
+- **`172.16.2.100`** _(IP de ejemplo)_: Es la ubicación del reloj atómico o servidor maestro en tu red. El switch le mandará paquetitos de red constantemente para ajustar sus segundos y minutos de forma exacta.
+
+⚠️ **LA ADVERTENCIA:** Si configuras el servidor NTP con una IP, pero te equivocas en un solo número o el switch no tiene una ruta IP para llegar a ese servidor (recuerda que el switch necesita su `ip default-gateway` para salir de su propia red), el comando no hará nada. El switch se quedará esperando en silencio y seguirá atrapado en el año 1993. ¡Verifica siempre la conectividad con un `ping` hacia el servidor NTP antes de dar el trabajo por hecho!
+
+
+## 📛 Paso 2: `ntp update-calendar` (Grabar la hora en el Reloj Físico)
+
+⚡ **Explicación rápida y ejemplo:** Le ordena al sistema operativo que tome la hora exacta que recibió de la red y la grabe directamente en el chip del reloj interno físico (el calendario de hardware) del Switch.
+
+```c
+SW-CORE(config)# ntp update-calendar
+```
+
+🧠 **La Lógica de Fondo:** Desarmemos el comando:
+
+- **`ntp`**: Operación bajo el protocolo de tiempo.
+- **`update-calendar`**: Actualizar el chip físico (Hardware Calendar).  
+    Muchos switches y routers de gama alta tienen un chip con una batería interna (como la de las tarjetas madre de PC) que mantiene la hora viva aunque el equipo se apague. Este comando asegura que la hora de red "se escriba en piedra" dentro de ese chip de hardware, manteniendo la sincronía perfecta todo el tiempo.
+
+⚠️ **LA ADVERTENCIA:** Si olvidas activar `ntp update-calendar`, el switch tendrá la hora perfecta mientras esté encendido porque la tiene guardada en la memoria RAM temporal. Pero si el switch sufre un apagón o lo reinicias, al encender volverá a despertar desorientado en el año de nacimiento de Cisco hasta que logre comunicarse otra vez con el servidor por red. ¡Este comando es el seguro de vida del reloj!
+
+
+## 3_🕵️‍♂️ ¿Cómo verificar que tu Switch ya vive en el presente?
+
+Para comprobar que el hechizo del tiempo funcionó, sal al modo privilegiado (`exit`) y ejecuta el comando de verificación horaria:
+```c
+SW-CORE# show clock
+
+SW-CORE(config)# do show clock
+```
+
+Si todo quedó perfecto, verás la fecha y hora exacta del día de hoy en lugar de los años 90. ¡Magia pura de sincronización!
+
+
+# Aprovisionamiento y Asignación de Puertos de Acceso"
+(o en el barrio de las redes: _"Planchar un puerto en una VLAN"_)
+
+## 1_Asignar una Habitación Privada en el Switch
+```c
+SW-CORE(config)# interface GigabitEthernet 1/0/23
+SW-CORE(config-if)# switchport mode access
+SW-CORE(config-if)# switchport access vlan 100
+SW-CORE(config-if)# description === LINK A COMPUTADORA NEXOSOFT ===
+
+```
+
+⚡ **Explicación rápida y ejemplo:** Te metes a la configuración de un puerto físico específico del switch, lo configuras para que reciba a una sola computadora (modo acceso), lo encierras en su respectiva VLAN (la 100) y le pones una etiqueta para saber qué hay conectado ahí.
+
+🧠 **La Lógica de Fondo:** Desarmemos qué pasa en el procesador y el hardware palabra por palabra:
+
+- **`interface GigabitEthernet 1/0/23`**: Le dices al switch: _"Ojo, apúntame al puerto físico Gigabit número 23"_. (La nomenclatura `1/0/23` significa: Switch del módulo 1, tarjeta 0, puerto 23).
+- **`switchport mode access`**: Configura el puerto en **Modo Acceso**. Esto le ordena al hardware: _"Este puerto es exclusivo para un dispositivo final (PC, impresora, servidor). Aquí está estrictamente prohibido conectarse con otro switch"_.
+- **`switchport access vlan 100`**: El comando definitivo. Mueve el puerto de la VLAN 1 (fábrica) a la **VLAN 100**. Físicamente, el switch crea una barrera eléctrica en su chip para que el tráfico de este puerto se quede aislado en su propia "habitación virtual".
+- **`description ...`**: Es un comentario de texto en la memoria. No afecta cómo viajan los datos, pero le salva la vida a los ingenieros humanos para saber a dónde va ese cable sin tener que ir a buscarlo físicamente al rack.
+
+⚠️ **LA ADVERTENCIA (El peligro del aislamiento y la VLAN fantasma):** ¡Mucho cuidado aquí, futuro CCIE! Si tú tiras el comando `switchport access vlan 100`, pero en tu switch **nunca creaste la VLAN 100** previamente (con el comando `vlan 100`), Cisco IOS intentará ayudarte creando una VLAN fantasma en ese instante. Sin embargo, si esa VLAN no está bien configurada en la base de datos o en los enlaces troncales hacia el Router, **la computadora que conectes al puerto 23 se quedará completamente sorda, muda y aislada del internet**. Podrá hablar con sus vecinos del mismo switch en la VLAN 100, pero jamás podrá salir de ahí porque nadie sabe cómo enrutar esa nueva "habitación". ¡Asegúrate siempre de que las VLANs existan en toda la red!
+
+
+# Lanzar el gancho de abordaje SSH
+
+```c
+PC/Router/Switch ssh -l admin 192.168.1.254
+```
+
+⚡ **Explicación rápida y ejemplo:** Abres la consola de tu PC (o de otro router) y disparas el comando apuntando al usuario que creaste y a la IP del equipo al que te quieres conectar.
+
+_(Nota: El profe escribió `-l` que es una **L minúscula**, no un número uno `1`. ¡Mucho ojo con ese detalle de tipeo!)._
+
+🧠 **La Lógica de Fondo:** Desarmemos el comando en el procesador:
+
+- **`ssh`**: Le dice a la computadora: _"Activa el protocolo Secure Shell. Vamos a encriptar todo el tráfico para que nadie nos espíe"_.
+- **`-l`**: Significa **Login** (identificación). Le avisa al sistema: _"Oye, el nombre de usuario que voy a usar viene justo a continuación"_.
+- **`admin`** _(o tu nombre de usuario)_: Es la credencial que el Switch receptor va a buscar en su memoria RAM (con el filtro de `username` que aprendimos hace un momento).
+- **`192.168.1.254`** _(o la IP de destino)_: Es la dirección de la casa a la que vas a tocar la puerta. El sistema operativo busca esa IP en la red, viaja hasta el equipo y le dice: _"¡Abre la sesión!"_.
+
+⚠️ **LA ADVERTENCIA:** Si ejecutas este comando y se queda la pantalla congelada en _“Connecting...”_ o te sale un error de _“Connection timed out”_, ¡tenemos un problema! Significa uno de tres errores fatales comunes:
+
+1. Escribiste mal la IP.
+2. Olvidaste encender la interfaz virtual del Switch con el comando `no shutdown`.
+3. No hay un cable o una ruta que conecte físicamente tu PC con esa IP.
+
+Si el comando sí responde pero te rebota diciendo _“Connection refused”_, la IP está bien, pero **olvidaste activar el comando `transport input ssh` en las líneas VTY**, por lo que el Switch tiene las puertas cerradas con llave.
+
+# Ver configuraciones
+## 1_Router
+### 1_El Escáner de Rayos X de la Configuración
+```c
+Router# show running-config
+
+Router# sh run
+```
+
+🧠 **La Lógica de Fondo:** Este comando le pide al procesador del router o switch que vuelque en pantalla el archivo de configuración activo. Aquí verás los usuarios que creaste, las contraseñas trituradas, las IPs asignadas a las interfaces y la configuración de las líneas VTY. Se lee de arriba a abajo en el orden exacto en que el sistema operativo (IOS) procesa las instrucciones.
+
+⚠️ **LA ADVERTENCIA:** ¡Esta información es mega confidencial! Si alguien ve tu pantalla mientras corres este comando y no usaste contraseñas tipo `secret` (trituradas), verán tus accesos desnudos. Además, recuerda que lo que ves aquí **está solo en la RAM**. Si el router se apaga o se va la luz en este momento, ¡todo se borrará como si no hubieras guardado partida en tu juego favorito! (Recuerda usar `copy running-config startup-config` o `write` para salvar tu progreso).
+
+### 2_El Panel de Control de las IPs (Exclusivo de Routers)
+
+```c
+Router# show ip interface brief
+
+Router# sh ip int br
+```
+
+⚡ **Explicación rápida y ejemplo:** Te da una lista compacta, limpia y hermosa del estado de todas las interfaces del router, sus IPs y si están encendidas o apagadas.
+
+🧠 **La Lógica de Fondo:** Desarmemos este comando palabra por palabra:
+
+- **`show`**: "Muéstrame..."
+- **`ip`**: "...la información del protocolo IP..."
+- **`interface`**: "...de mis tarjetas de red (puertos)..."
+- **`brief`**: "...en un resumen corto (sin rodeos)."  
+    El procesador genera una tabla rápida para que compruebes de un solo vistazo si las IPs que asignaste están bien escritas y si el cable está haciendo contacto.
+
+⚠️ **LA ADVERTENCIA:** En la columna "Status" y "Protocol", ambas deben decir **`up` / `up`**. Si dice `administratively down`, significa que olvidaste prender la interfaz con el comando `no shutdown`. Si dice `down` / `down`, tienes un problema físico: el cable está roto, mal conectado o el equipo del otro lado está apagado.
+
+### 3_El Inspector de Seguridad de Líneas y Usuarios
+
+```c
+Router# show users
+
+Router# sh users
+```
+
+🧠 **La Lógica de Fondo:** Este comando interroga a las líneas VTY y a la línea de consola (CON 0) para ver qué hilos de conexión están activos. Te mostrará el nombre del usuario local que inició sesión, la dirección IP desde la que se conectó y cuánto tiempo lleva inactivo.
+
+⚠️ **LA ADVERTENCIA:** Si corres este comando en una red real y ves un usuario o una IP sospechosa que tú no autorizaste, ¡tienes un intruso en tu base militar! Podrás usar el comando `clear line` seguido del número de línea para patearlo y cerrarle la conexión inmediatamente.
+
+### 4_El Filtro Avanzado de la "Running Config"
+
+```c
+Router# show running-config | include username
+```
+
+⚡ **Explicación rápida y ejemplo:** Le pides al equipo que examine toda la configuración, pero que **solo** te muestre las líneas donde aparezca la palabra "username" (los usuarios).
+
+_(Nota: El símbolo `|` se llama "pipe" o barra vertical, y se saca en el teclado con `Alt Gr + 1` o `Acuadrado` según tu teclado)._
+
+🧠 **La Lógica de Fondo:** Desarmemos este truco:
+
+- **`show running-config`**: El router abre el mapa completo de la memoria RAM.
+- **`|` (Pipe)**: Funciona como un embudo o filtro. Le dice al procesador: "No me muestres todo, espera un momento...".
+- **`include username`**: "...busca solo las líneas que incluyan el texto 'username'".  
+    El procesador hace un escaneo ultra rápido en milisegundos y te arroja en pantalla tus dos usuarios exactos con sus contraseñas encriptadas.
+
+⚠️ **LA ADVERTENCIA:** Si al correr este comando ves que después del nombre de tu usuario dice la palabra `password` seguida de la contraseña en texto plano (ej: `username admin password 1234`), ¡estás en peligro! Cualquiera que se pare detrás de ti podrá leerla. Asegúrate siempre de que diga `secret` (ej: `username admin secret 9$aK...`), lo que significa que la contraseña está triturada matemáticamente y es imposible de descifrar a simple vista.
+
+##### 1_Opción 2: El Comando Secreto de Usuarios Locales
+
+```c
+Router# show aaa user local
+```
+
+⚡ **Explicación rápida y ejemplo:** En los equipos Cisco más modernos y en simuladores avanzados, puedes interrogar directamente al gestor de seguridad local para ver la lista de usuarios y sus niveles de poder.
+
+🧠 **La Lógica de Fondo:** Las siglas **AAA** significan _Autenticación, Autorización y Contabilidad_ (la policía de seguridad del router). Al ejecutar este comando, el sistema no lee el archivo de texto de la configuración, sino que va directo al módulo de seguridad interna y te despliega una lista limpia de los usuarios creados, cuántos privilegios tienen (del 0 al 15) y si están activos.
+
+⚠️ **LA ADVERTENCIA:** Si creaste los usuarios pero al ejecutar este comando o intentar entrar por SSH el router te rebota, verifica que en tus líneas VTY hayas puesto el comando **`login local`**. Si solo pusiste `login`, el router buscará una contraseña global en lugar de mirar tu lista de usuarios, bloqueándote la entrada por completo.
+
+### 5_Para ver en ese momento cual es mi nivel ve privilegio
+```c
+Router# show privilege
+```
+⚡ **Explicación rápida y ejemplo:** Este comando solo te arroja una línea de texto en pantalla que te dice en qué nivel de la escala del 0 al 15 estás operando en este instante.
+Lo que te está mostrando ese "15" es tu **rango o nivel de poder actual en ese preciso milisegundo**. Es el espejo que te dice: _"Tú, la persona que está tecleando ahora mismo, tienes nivel 15 (Modo Dios)"_.
+## 2_Switch 
+### 1_El Mapa del Tesoro del Switch (Exclusivo de Switches)
+
+```c
+Switch# show vlan brief
+
+Switch# sh vlan br
+```
+
+🧠 **La Lógica de Fondo:** Los switches, a diferencia de los routers, no enrutan por IP por defecto; ellos dividen la red en VLANs. Este comando le pide al Switch que te muestre el mapa de división. Verás qué puertos pertenecen a la VLAN 1 (la de fábrica), o si ya creaste la VLAN de Administración, de Estudiantes, etc.
+
+⚠️ **LA ADVERTENCIA:** Por defecto, todos los puertos del switch vienen metidos en la **VLAN 1**. Si creas una VLAN de alta seguridad (ej: VLAN 10 para Servidores) pero olvidas mover los puertos físicos a esa VLAN con el comando `switchport access vlan 10`, tus servidores se quedarán aislados o expuestos en la red pública por defecto. ¡Verifica siempre esta tabla!
+
+### 2_El comportamiento de `show running-config` y `show users` en el Switch
+
+```c
+Switch# show running-config
+
+Switch# sh run
+---
+Switch# show users
+
+Switch# sh users
+
+```
+
+⚡ **Explicación rápida:** Funcionan exactamente igual que en el router. Al ejecutarlos en el Switch verás los mismos resultados adaptados a su hardware.
+
+🧠 **La Lógica de Fondo:**
+
+- **En el Switch (`show running-config`):** Te mostrará los mismos usuarios locales que creaste y tus líneas VTY blindadas con SSH. La única diferencia visual es que en lugar de ver interfaces de Router (como `GigabitEthernet0/0`), verás la enorme lista de puertos del Switch (como `FastEthernet0/1` hasta la `0/24`).
+- **En el Switch (`show users`):** Te delatará de inmediato si hay alguien conectado de forma remota administrando el Switch.
+
+### 3_Crear la SVI (La interfaz virtual para darle IP al Switch)
+
+```c
+! Así se configura (en modo de configuración global):
+Switch(config)# interface vlan 1
+Switch(config-if)# ip address 192.168.1.254 255.255.255.0
+Switch(config-if)# no shutdown
+
+! Y así lo miras con tu comando favorito (en modo privilegiado):
+
+Switch# show ip interface brief
+```
+
+⚡ **Explicación rápida y ejemplo:** Como los puertos físicos del Switch (donde conectas las computadoras) no aceptan IPs, el Switch crea un "puerto fantasma o virtual" dentro de su memoria llamado **SVI** (Switch Virtual Interface). Por defecto, usamos la **VLAN 1**. El comando para darle vida y el comando para verificarlo son estos:
+
+🧠 **La Lógica de Fondo:** El Switch necesita una IP no para mandar los memes de una computadora a otra, sino para que **tú te puedas conectar a él de forma remota por SSH**. Al correr el comando `show ip interface brief`, verás la enorme lista de puertos físicos vacíos (`unassigned`), pero al final de la tabla aparecerá mágicamente una nueva línea que dice `Vlan1` con la IP que le acabas de poner. ¡Ahí es donde confirmas que tu Switch ya tiene identidad en la red!
+
+⚠️ **LA ADVERTENCIA:** El error más común del universo (incluso le pasa a ingenieros con años de experiencia) es configurar la IP perfectamente pero olvidar escribir el comando **`no shutdown`** dentro de la `interface vlan 1`. Si lo olvidas, cuando corras el `show ip interface brief` verás que la IP está ahí, pero el estatus dirá **`administratively down`**. ¿El resultado? El Switch ignorará por completo la IP y tu SSH jamás va a conectar. ¡Siempre asegúrate de "encender" la interfaz virtual!
 
 # **Construir las 16 salas de espera virtuales para los administradores**.
 
@@ -32,7 +441,7 @@ Tu profe usó `0 15` por **seguridad total**. Si tú solo configuras el rango `0
 
 Es como si hubieras construido los 16 pasillos en el hotel, pero todavía no le has dicho al recepcionista qué tipo de clientes puede dejar pasar, ni qué identificación pedirles.
 
-## 1_**Activar los guardias y ponerle temporizador a las salas de espera**
+## 1_Activar los guardias y ponerle temporizador a las salas de espera
 
 ### 1_🔍 Los 4 comandos desarmados paso a paso
 
@@ -96,7 +505,7 @@ La versión 2 de SSH es tan estricta con la seguridad que **exige como mínimo u
 
 En las computadoras de [Packet Tracer](https://www.packettracernetwork.com/download/download-packet-tracer.html), cuando entras a la sección de "Command Prompt" (la terminal negra) para conectarte al router de forma remota, el comando se escribe así:
 
-```
+```c
 PC> ssh -l admin 192.168.10.254
 ```
 
@@ -134,7 +543,8 @@ Al escribir el comando específico de tu profe `ip ssh version 2`, estás borran
 # Fabricar los escudos criptográficos del router
 **si no tienes configurados el `hostname` y el** ==**`ip domain-name`, el router te va a rebotar el comando en la cara** con un mensaje de error==.
 
-## 1_🧠 ¿Por qué el router te obliga a tener Hostname y Dominio?
+## 1_Encriptar
+### 1_🧠 ¿Por qué el router te obliga a tener Hostname y Dominio?
 
 El comando `crypto key generate rsa` sirve para **crear un par de llaves digitales (una pública y una privada)**. Imagina que el router va a fabricar una caja fuerte digital para que cuando tú te conectes por SSH, tus contraseñas viajen protegidas por el cable y ningún hacker las pueda interceptar.
 
@@ -156,7 +566,7 @@ Cuando tú sigues los pasos de tu profe y pones:
 El router junta las dos piezas y dice: _"¡Perfecto! Mi nombre único en el mundo es_ [nexo.com](http://nexo.com/)_"_. Con ese dato, el algoritmo matemático ya puede mezclar las letras y los números para crear una llave digital que sea **única en todo el planeta**.
 
 
-## 2_🛠️ ¿Qué pasa cuando le das Enter a ese comando?
+### 2_🛠️ ¿Qué pasa cuando le das Enter a ese comando?
 
 En cuanto escribes `crypto key generate rsa` y le das _Enter_, [Packet Tracer](https://www.packettracernetwork.com/download/download-packet-tracer.html) te va a hacer una pregunta en inglés:
 
@@ -168,11 +578,33 @@ Ahí tú tienes que escribir un número (los profes suelen usar **1024** o **204
 - **1024 bits:** Es el mínimo que te acepta el router para activar la versión segura de SSH (SSH v2).
 - **2048 bits:** Es el estándar profesional actual. Es una caja fuerte digital ultra pesada y segura.
 
-## 3_⚠️ LA ADVERTENCIA DE "EL EFECTO BORRADOR"
+### 3_⚠️ LA ADVERTENCIA DE "EL EFECTO BORRADOR"
 
 > **Si en el futuro se te ocurre cambiar el `hostname` o el `domain-name` del router, las llaves RSA que creaste hoy se VAN A BORRAR automáticamente.**
 
 El router es tan estricto que si nota que cambiaste de nombre (por ejemplo, de `R1` a `RouterJefe`), pensará: _"Este ya no es mi certificado oficial"_, destruirá la llave RSA y el acceso remoto (SSH) se va a apagar de inmediato hasta que vuelvas a escribir el comando `crypto key generate rsa`. ¡Ten mucho cuidado con cambiar nombres a mitad de un proyecto!
+
+## 2_Ocultar llaves visibles por comandos
+### 1_El Camuflaje de Contraseñas Desnudas
+
+```c
+Router(config)# service password-encryption
+```
+
+⚡ **Explicación rápida y ejemplo:** Te metes al modo de configuración global y ejecutas el comando. A partir de ese milisegundo, cualquier contraseña vieja o nueva que use la palabra clave `password` (texto plano) se transformará en un montón de caracteres raros e ilegibles.
+
+🧠 **La Lógica de Fondo:** Desarmemos qué pasa dentro del procesador y la memoria RAM:
+
+- **`service`**: Le dice al sistema operativo: _"Voy a activar o modificar un servicio del sistema en segundo plano"_.
+- **`password-encryption`**: Especifica exactamente qué servicio es: _"El motor de encriptación de contraseñas de texto plano"_.  
+    Cuando el procesador ve este comando, activa un algoritmo matemático llamado **Cisco Tipo 7**. Su único trabajo es escanear la configuración (la _running-config_) y buscar palabras como la contraseña de `enable password` o las contraseñas de la línea de consola, y triturarlas visualmente. Si antes en tu `show running-config` se leía `password 1234`, ahora se leerá algo como `password 08314F5D0A`. ¡Nadie podrá leerla por encima de tu hombro!
+
+⚠️ **LA ADVERTENCIA (El secreto que los Hackers no quieren que sepas):** ¡Mucho ojo aquí, futuro experto! La encriptación Tipo 7 que genera este comando **es extremadamente DEBIL**. No es un algoritmo de seguridad real, es solo un "camuflaje visual" para evitar que la gente chismosa vea tu pantalla (lo que en ciberseguridad llamamos _Shoulder Surfing_). Existen miles de páginas web gratis donde pegas ese código raro (`08314F5D0A`) y en menos de un segundo te dice que la clave era `1234`.
+
+Por eso, la regla de oro en NexoSoft Labs es:
+
+1. Usa siempre **`secret`** en lugar de `password` al crear usuarios o contraseñas de enable (ya que `secret` usa algoritmos ultra fuertes como MD5 o SHA-256 que no se pueden revertir).
+2. Deja el comando `service password-encryption` activo como una capa extra de protección obligatoria para las líneas viejas (como la línea de consola), tal como lo dictan las buenas prácticas de ITIL.
 # Seguridad en las claves importante 
 
 ## 1_Encriptar
