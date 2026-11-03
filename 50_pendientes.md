@@ -68,34 +68,7 @@ puertos de conexion de fibra optica
 - **El cable de Consola Especial (El azul celeste):** Está hecho exclusivamente para configuración. Antiguamente, venía con una punta plana de color azul (conector serial DB9) para la computadora y una punta de red (RJ-45) para el router. Hoy en día, los modernos son cables planos de color azul que van de **USB** en la laptop a **RJ-45** (o Mini-USB) en el router. Su distribución interna de cables está totalmente invertida (el pin 1 de un lado se conecta al pin 8 del otro lado), por eso se llama _Rollover_.
 
 
-# HSRP (Hot Standby Router Protocol)
-
-es una tecnología genial y un pilar fundamental en las redes corporativas! Tienes toda la razón: ==**es un protocolo de redundancia**
-
-(específicamente de Redundancia de Primer Salto o _First Hop Redundancy_)==.
-
-Para explicártelo de forma muy sencilla: **HSRP es como tener un "router de repuesto" configurado como un gemelo para que, si el router principal se quema o se apaga, el segundo router tome el control en un segundo sin que ningún usuario de la empresa se quede sin Internet.**
-
-1. El secreto de HSRP: El "Router Virtual"
-
-Imagínate que en la VLAN 20 de tu empresa tienes dos routers físicos para dar más seguridad:
-
-- **Router A (Principal):** IP `172.16.20.2`
-- **Router B (Respaldo):** IP `172.16.20.3`
-
-Si configuras HSRP, los dos routers se ponen de acuerdo y crean un **Router Virtual fantasma** en la red con una IP nueva, por ejemplo, la **`172.16.20.1`**.
-
-2. ¿Cómo se conecta con el Gateway de las PCs?
-
-¿Te acuerdas de que antes hablamos de que a todas las computadoras hay que ponerles una **Puerta de Enlace (Gateway)** fija?
-
-- Con HSRP, tú le configuras a todas las PCs de la VLAN 20 el Gateway del fantasma: **`172.16.20.1`**.
-- En el día a día, el Router A (que se conoce como **Active** o Activo) atiende todas las peticiones que van a esa IP virtual.
-    
-- El Router B (llamado **Standby**) se queda callado, escuchando al Router A. Si el Router A deja de enviar señales (porque se dañó el cable o se fue la luz), el Router B asume la IP virtual `172.16.20.1` automáticamente.
-- **Para los usuarios es transparente:** Ninguna PC se da cuenta del daño porque su Gateway (`172.16.20.1`) sigue respondiendo.
-
-
+# HSRP 
 # TACACS 
 
 El Filtro de las Tres "A" (Authentication, Authorization, Accounting)

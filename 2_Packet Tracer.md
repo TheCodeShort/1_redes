@@ -5,6 +5,487 @@ maxDepth: 6
 listStyle: number
 ```
 
+
+# EtherChannel (específicamente usando LACP)
+el objetivo principal es fusionar cables físicos para que se comporten como un único súper cable lógico. Esto te da dos superpoderes de inmediato: multiplica el ancho de banda y te da una redundancia brutal a prueba de fallas.
+
+Si tienes una autopista de un solo carril (un cable de 1 Gbps) y se llena de autos (tráfico de datos), habrá _lag_. Si tiras otro cable al lado, normalmente un protocolo llamado STP (Spanning Tree) bloquearía un cable para evitar bucles. Pero con **EtherChannel**, fusionas ambos carriles en una súper autopista de dos carriles (2 Gbps). Si un camión choca en el carril 1 (se rompe un cable), el tráfico sigue fluyendo por el carril 2 instantáneamente sin que la red se caiga. ¡Eso es alta disponibilidad!.
+
+## 📛 Paso 1: Seleccionar el combo de cables
+
+⚡ **Explicación rápida y ejemplo:** Agrupas los cables físicos que van a formar la súper autopista.
+```c
+Switch(config)# interface range gigabitEthernet 1/0/21-22
+```
+
+- **`interface range`**: Le dice al switch: "No quiero configurar un solo puerto, voy a aplicarle el mismo comando a un bloque de puertos a la vez".
+- **`gig 1/0/21-22`**: Especifica las interfaces físicas Gigabit 21 y 22.
+
+## 📛 Paso 2: El apretón de manos inteligente (LACP)
+
+⚡ **Explicación rápida y ejemplo:** Activas los puertos y les ordenas que negocien activamente con el otro switch para unirse en matrimonio usando el protocolo estándar LACP.
+
+```c
+Switch(config-if-range)# no shutdown
+Switch(config-if-range)# channel-group 1 mode active
+```
+
+- **`channel-group 1`**: Mete a estos dos puertos en la bolsa del "Grupo de Canales número 1".
+- **`mode active`**: **¡Esto es la clave de LACP!** Le dice al puerto: "Busca activamente al switch del frente y pregúntale si quiere armar un EtherChannel usando el protocolo estándar de la industria (IEEE 802.3ad/LACP)".
+    
+
+⚠️ **LA ADVERTENCIA:** El modo `active` requiere que el switch del frente esté en modo `active` o `passive`. Si pones un lado en un protocolo (como LACP `active`) y el otro rack en un protocolo viejo de Cisco (como PAgP `desirable`), los switches entrarán en conflicto, se bloquearán los puertos y aislarás por completo el segundo rack.
+
+
+## 📛 Paso 3: Configurar la súper interfaz virtual (Port-Channel)
+
+⚡ **Explicación rápida y ejemplo:** Entras a configurar el "cable virtual" que creaste en el paso anterior y lo transformas en un puente para todas tus VLANs.
+
+```c
+Switch(config)# interface port-channel 1
+Switch(config-if)# switchport mode trunk
+```
+
+- **`interface port-channel 1`**: Entra al menú del puerto virtual número 1 que agrupa a la Gig 1/0/21 y 22.
+- **`switchport mode trunk`**: Convierte este canal en un **Troncal**, permitiendo que viajen datos de múltiples VLANs al mismo tiempo por ahí.
+
+🧠 **La Lógica de Fondo:** Como bien dijo tu profesor, lo que configures dentro de `interface port-channel 1` se replica automáticamente en la Gig 1/0/21 y Gig 1/0/22. ¡Es genial porque te ahorra configurar puerto por puerto y evita que cometas errores de desajuste!
+
+
+## 📛 Paso 4: Poner el filtro de seguridad de VLANs
+
+⚡ **Explicación rápida y ejemplo:** Le dices explícitamente al canal qué habitaciones (VLANs) tienen permitido cruzar hacia el segundo rack.
+
+```c
+Switch(config-if)# switchport trunk allowed vlan 10,20,30,40,50,60,100
+```
+
+- **`allowed vlan`**: Es un muro de seguridad. Por defecto, un troncal deja pasar todas las VLANs del universo (de la 1 a la 4094). Con esto le dices: "Solo pasan las VLANs de la lista, las demás se quedan afuera".
+
+⚠️ **LA ADVERTENCIA:** Si en el switch del rack 2 configuras el Port-Channel pero te olvidas de poner este mismo comando `switchport trunk allowed vlan`, o tecleas mal un número (por ejemplo, pones 100 y olvidas la 10), los dispositivos conectados en el segundo rack que pertenezcan a las VLANs faltantes se quedarán sin internet y sin comunicación con el WLC o los servidores principales.
+
+---
+## ¿Se pueden crear muchos canales?
+
+¡Totalmente! En un switch Cisco mediano o grande puedes crear típicamente hasta 64 o 128 Port-Channels diferentes.
+- Puedes usar el **Channel-Group 1** para ir al Rack 2.
+- Puedes usar el **Channel-Group 2** (uniendo otros puertos) para conectarte a un servidor NAS de almacenamiento masivo.
+- Puedes usar el **Channel-Group 3** para conectarte a otro switch del piso de arriba.
+Cada canal funciona de manera independiente uniendo sus propios cables físicos.
+
+# Configuración TACACS+
+
+## 📛 Paso 1: Apuntar al cuartel general de seguridad
+
+⚡ **Explicación rápida y ejemplo:** Le dices al router en qué coordenada de la red (IP) está el servidor de seguridad y cuál es el "apretón de manos" secreto (clave) para que se entiendan.
+
+```c
+Router(config)# tacacs-server host 10.100.100.100 key 1234
+```
+
+- **`tacacs-server`**: Activa el submódulo del sistema operativo Cisco IOS encargado de hablar el protocolo TACACS+.
+- **`host`**: Palabra clave para indicarle que a continuación viene una dirección IP específica.
+- **`10.100.100.100`**: La dirección IP del servidor físico `SERVER TACACS-IOT` en la red.
+- **`key`**: Le avisa al router que lo siguiente es la contraseña de encriptación simétrica.
+- **`1234`**: La clave compartida. El router y el servidor usarán este número para cifrar los datos de inicio de sesión que viajen por el cable, evitando que un atacante los lea.
+
+🧠 **La Lógica de Fondo:** El router necesita saber a dónde enviar las solicitudes de inicio de sesión _antes_ de activar la seguridad global; de lo contrario, intentaría buscar un servidor que no existe en su mapa mental.
+
+⚠️ **LA ADVERTENCIA:** Si la `key` (1234) no coincide exactamente con la que escribiste en la interfaz gráfica del servidor de Packet Tracer, el servidor rechazará al router. El router se quedará esperando y bloqueará los accesos.
+
+## 📛 Paso 2: Encender el motor AAA
+
+⚡ **Explicación rápida y ejemplo:** Activa las funciones de seguridad modernas de Cisco (Autenticación, Autorización y Auditoría).
+```c
+Router(config)# aaa new-model
+```
+
+- **`aaa`**: Llama al sistema de seguridad de tres capas (Authentication, Authorization, Accounting).
+- **`new-model`**: Cambia el modo antiguo de autenticación local simple por el modelo estructurado avanzado.
+
+🧠 **La Lógica de Fondo:** Este comando abre las puertas de la memoria del router para procesar listas de acceso de seguridad complejas. Si no lo ejecutas primero, los siguientes comandos `aaa` te darán un error de sintaxis en la consola.
+
+⚠️ **LA ADVERTENCIA:** ¡Cuidado! En equipos reales, al presionar _Enter_ en `aaa new-model`, si ya tenías sesiones abiertas sin contraseñas guardadas correctamente, podrías perder el acceso de administración de inmediato.
+
+## 📛 Paso 3: Asegurar la puerta principal de la consola
+
+⚡ **Explicación rápida y ejemplo:** Define la regla por defecto para entrar al router: primero pregúntale al servidor TACACS+, y si este se cae, usa la base de datos local del router.
+
+```c
+Router(config)# aaa authentication login default group tacacs+ local
+```
+
+
+- **`aaa authentication login`**: Crea una regla para cuando alguien intente iniciar sesión.
+- **`default`**: Aplica esta regla automáticamente a todas las líneas del router (Consola, Auxiliar y VTY).
+- **`group tacacs+`**: Primera opción: Enviar el usuario y contraseña al servidor TACACS+ externo para que él decida si pasa o no.
+- **`local`**: Segunda opción (Plan B): Si el servidor TACACS+ explota o el cable se corta, el router usará los usuarios creados en su propia memoria (como el usuario `ranmdom` con clave `1234` que creaste en tu servidor, si es que también lo creas localmente en el router con `username`).
+
+🧠 **La Lógica de Fondo:** Se usa la palabra `default` para que sea una red segura desde el primer segundo en todas sus entradas físicas y virtuales.
+
+⚠️ **LA ADVERTENCIA:** Si escribes `group tacacs+` pero te olvidas de poner la palabra `local` al final, y por alguna razón el servidor se apaga o pierde conexión, **¡te quedarás completamente fuera de tu propio router!** No habrá forma de loguearse y tendrás que resetear el equipo físicamente.
+
+
+## 📛 Paso 4: El guardaespaldas del modo privilegio (enable)
+
+⚡ **Explicación rápida y ejemplo:** Protege el comando `enable` (el ascensor a los privilegios de administrador) usando el servidor central.
+
+```c
+Router(config)# aaa authentication enable default group tacacs+ local
+```
+
+- **`enable`**: Especifica que la regla se aplica cuando un usuario intente pasar de modo usuario normal (`>`) a modo administrador (`#`).
+- **`default group tacacs+ local`**: Misma lógica; le pregunta al servidor central y si falla, recurre a la contraseña local de `enable` guardada en el equipo (`enable secret`).
+
+🧠 **La Lógica de Fondo:** De nada sirve proteger el inicio de sesión si una vez adentro cualquiera puede volverse administrador sin pasar por una verificación centralizada.
+
+---
+
+## 📛 Paso 5 y 7: Crear la llave digital para las líneas virtuales (VTY)
+
+⚡ **Explicación rápida y ejemplo:** Creas una lista de autenticación personalizada llamada "vty" y luego se la pegas a los canales de acceso remoto (SSH/Telnet).
+
+```c
+Router(config)# aaa authentication login vty group tacacs+ local
+```
+
+- **`vty`**: En lugar de llamarse `default`, aquí le estás poniendo un **nombre propio** a esta regla de seguridad. La lista ahora se llama "vty".
+
+🧠 **La Lógica de Fondo / El Match:** Al usar un nombre personalizado (vty) en lugar de `default`, el comando no hace nada por sí solo hasta que vas a la configuración de las líneas y lo enlazas manualmente (Paso 7). Esto te da un control quirúrgico de la seguridad.
+
+---
+
+## 📛 Paso 6 y 7: Blindar las autopistas remotas (Líneas VTY)
+
+⚡ **Explicación rápida y ejemplo:** Entras a los 16 canales virtuales de comunicación remota y les ordenas usar la regla personalizada que creaste en el paso 5.
+
+text
+
+```c
+Router(config)# line vty 0 15
+Router(config-line)# login authentication vty
+```
+
+Usa el código con precaución.
+
+- **`line vty 0 15`**: Entra al menú de configuración de las terminales virtuales (del canal 0 al 15, permitiendo 16 conexiones simultáneas por SSH).
+- **`login authentication`**: Le dice a la línea: "No uses la seguridad normal, vas a usar una lista AAA específica".
+- **`vty`**: ¡Aquí ocurre el **Match**! Llama exactamente a la regla que fabricaste en el Paso 5.
+
+⚠️ **LA ADVERTENCIA:** Si en el paso 7 escribes mal el nombre (por ejemplo, `login authentication VTY` en mayúsculas), el router no encontrará la regla y bloqueará los accesos remotos por completo debido a una inconsistencia de nombres.
+
+## 📛 Paso 8: El escáner de rayos X de la configuración
+
+⚡ **Explicación rápida y ejemplo:** Compruebas desde el modo privilegiado que tus directivas AAA hayan quedado perfectamente grabadas en el archivo de configuración activa (RAM).
+
+text
+
+```c
+Router# show run | inc aaa
+```
+
+Usa el código con precaución.
+
+- **`show running-config`** (abreviado `show run`): Muestra toda la configuración que se está ejecutando en este momento en la memoria RAM del router.
+- **`|`** (Pipe): Es un filtro. Le dice al procesador: "No me muestres todo el archivo, pásalo por un colador".
+- **`inc`** (Include): Filtra y muestra **únicamente** las líneas de texto que contengan la palabra que viene a continuación.
+- **`aaa`**: La palabra clave a buscar.
+
+🧠 **La Lógica de Fondo:** En lugar de leer 200 líneas de configuración buscando dónde quedaron tus comandos, este filtro te muestra en un milisegundo tu esquema AAA para verificar que no haya errores de ortografía.
+
+# Corazón de la Seguridad de Capa 2 (Switching Base)
+
+**`port-security` se aplica EXCLUSIVAMENTE a los Switches**, nunca a los routers. ¿Por qué? Porque los routers conectan redes enteras entre sí y sus puertos cambian de MAC constantemente según el camino; en cambio, los switches tienen puertos donde se conectan directamente los usuarios finales (PCs, laptops, impresoras), y ahí es donde queremos evitar que un atacante venga, desconecte la computadora de la oficina y conecte su laptop hacker.
+
+recordemos que la configuracion va directamente al puerto del Switch asi que hay que entrar a el
+
+```c
+Switch(config)# interface gig 0/2
+Switch(config-if)# switchport mode access
+Switch(config-if)# switchport access vlan 10
+-------------------------------------------------
+Switch(config-if)# switchport port-security
+Switch(config-if)# switchport port-security mac-address sticky
+Switch(config-if)# switchport port-security maximum {aca se pone un numero del 1-132}
+Switch(config-if)# switchport port-security violation {shutdown no es la unicca forma de porterger}
+```
+
+---
+
+## 📛 **Paso del Candado Adhesivo: El comando `sticky` (Pegajoso)**
+
+⚡ **Explicación rápida y ejemplo:**  
+Este comando le ordena al switch que aprenda de forma automática la dirección MAC del primer dispositivo que se conecte a ese puerto y la "pegue" de forma permanente en la configuración del equipo.
+
+```c
+Switch(config-if)# switchport port-security mac-address sticky
+```
+
+- **switchport port-security**: Activa el motor de seguridad en el puerto físico.
+- **mac-address**: Indica que la regla se basará en la dirección física de la tarjeta de red.
+- **sticky**: Significa "pegajoso". El switch mira la primera trama que entra, copia la MAC del cliente y la escribe dinámicamente en el archivo de configuración (`running-config`) como si tú mismo la hubieras digitado.
+
+🧠 **La Lógica de Fondo:**  
+En una empresa con 500 computadoras, sería una tortura para ti como ingeniero ir PC por PC anotando las direcciones MAC e ingresándolas manualmente en el switch. Con `sticky`, dejas que los usuarios enciendan sus PCs, el switch se aprende las MAC legítimas por sí solo y tú solo guardas la partida (`write` o `copy run start`).
+
+⚠️ **LA ADVERTENCIA:**
+
+> Si activas `sticky` en un puerto pero el usuario legítimo tiene su PC apagada, y en ese preciso segundo llega un atacante y conecta su laptop, el switch aprenderá la MAC del hacker como la "dirección autorizada". ¡Le habrás regalado acceso VIP permanente al enemigo por falta de sincronización!
+
+---
+
+## 📛 **Paso del Límite de Huéspedes: El comando `maximum`**
+
+⚡ **Explicación rápida y ejemplo:**  
+Por defecto, Port-Security solo permite **una (1) dirección MAC** por puerto. Con este comando cambias ese límite para permitir que más dispositivos se cuelguen legalmente de esa misma interfaz.
+
+```c
+Switch(config-if)# switchport port-security maximum 3
+```
+
+- **maximum**: Define el tope máximo de direcciones MAC permitidas en este puerto.
+- **3**: El número exacto de dispositivos tolerados (puedes configurar desde 1 hasta el límite de hardware del switch, usualmente 132 o más).
+
+🧠 **La Lógica de Fondo y los Niveles:**  
+¿Para qué querrías más de una MAC en un puerto? Aquí están los escenarios reales (los "niveles" o casos de uso):
+
+- **Nivel 1 (Default - `maximum 1`):** El estándar de oro. Una sola PC de escritorio por cubículo. Seguridad máxima.
+- **Nivel 2 (`maximum 2` o `3`):** Ultra común en oficinas modernas. El usuario tiene un **Teléfono IP** de Cisco conectado al switch, y la PC se conecta detrás del teléfono. El puerto del switch ve pasar dos MACs: la del teléfono y la de la PC. Si dejas el máximo en 1, el puerto se bloqueará de inmediato al encender la PC.
+- **Nivel 3 (Entornos virtuales o Hubs - `maximum 5` o más):** Si el usuario es un desarrollador que corre máquinas virtuales en su PC (como VirtualBox o VMware), cada máquina virtual genera su propia MAC virtual. Necesitas ampliar el `maximum` para que el switch no tome a las VMs como intrusos.
+
+⚠️ **LA ADVERTENCIA:**
+
+> Si subes el comando `maximum` a un número muy alto (ej. `maximum 20`) en un puerto común, estás abriendo la puerta a que un empleado conecte un mini-switch barato de su casa debajo de su escritorio y cuelgue a todo su departamento de un solo puerto, rompiendo tus políticas de diseño de red y saturando el ancho de banda.
+
+---
+
+## 📛 **Paso del Castigo: El comando `violation` y sus 3 modos de ejecución**
+
+⚡ **Explicación rápida y ejemplo:**  
+Este comando le dice al switch **qué hacer físicamente en su procesador** en el milisegundo exacto en que una MAC desconocida (la número 2 si el máximo era 1) intente enviar un solo paquete por el puerto.
+
+```c
+Switch(config-if)# switchport port-security violation shutdown
+```
+
+Cisco IOS maneja exactamente **3 modos de violación** (los castigos). Vamos a compararlos directamente para que veas sus diferencias críticas:
+
+| Modo de Violación                 | ¿Apaga el puerto? (LED)               | ¿Bloquea el tráfico intruso?        | ¿Envía alerta / Log (Syslog)? | ¿Suma al contador de violaciones? |
+| --------------------------------- | ------------------------------------- | ----------------------------------- | ----------------------------- | --------------------------------- |
+| 🛑 **`shutdown`** _(Por defecto)_ | **SÍ** (Pasa a Rojo / `err-disabled`) | SÍ                                  | SÍ                            | SÍ                                |
+| ⚠️ **`restrict`**                 | NO (Se queda en Verde)                | **SÍ** (Tira los paquetes intrusos) | SÍ                            | SÍ                                |
+| 🛡️ **`protect`**                 | NO (Se queda en Verde)                | **SÍ** (Tira los paquetes intrusos) | **NO** (Es silencioso)        | NO                                |
+
+🧠 **La Lógica de Fondo:**
+
+- **`shutdown`** es el modo militar. Apaga el puerto por completo. Para revivirlo, un administrador de red real debe entrar por consola, escribir `shutdown` y luego `no shutdown`. Es ideal para máxima seguridad.
+- **`restrict`** es el modo inteligente. Si el jefe conecta su laptop personal por error, el switch bloquea su internet, te avisa a ti con una alerta gigante en la consola, pero en cuanto el jefe desconecta su laptop y vuelve a conectar la PC de la oficina, el puerto sigue funcionando de inmediato sin que tú tengas que intervenir.
+- **`protect`** es el modo silencioso y el menos recomendado. Bloquea al intruso pero no le avisa a nadie ni deja registro de que alguien intentó hackear la red.
+
+⚠️ **LA ADVERTENCIA:**
+
+> Usar el modo `protect` en una red corporativa es un peligro grave de seguridad invisible. Un atacante podría pasar días probando contraseñas o conectando dispositivos en un puerto con `protect`, y tú nunca te enterarías en tus servidores de monitoreo porque el switch procesa el bloqueo en silencio absoluto.
+
+---
+
+## 📛 **Paso del Ojo del Administrador: El comando `show port-security`**
+
+⚡ **Explicación rápida y ejemplo:**  
+Es el comando de auditoría definitiva. Te muestra un resumen de cuántos puertos en todo el switch tienen el candado puesto, cuáles han sido violados y cuántos se han apagado.
+
+```c
+Switch# show port-security
+```
+
+Si quieres ver el detalle de un solo puerto (por ejemplo, para ver la MAC que se quedó pegada), usas el modificador:
+
+```c
+Switch# show port-security interface gig 0/2
+```
+
+🧠 **La Lógica de Fondo:**  
+Cuando un usuario te llame diciendo _"Ingeniero, mi puerto de red se puso en rojo de la nada y no tengo link"_, ejecutas este comando. Te dirá instantáneamente si el puerto fue víctima de una violación por intrusos.
+
+---
+
+## 🚨 ALERTA TÉCNICA DE NETPROF (Corrección de error de concepto)
+
+Al inicio se uso esta : `1) interface gig 0/2.10`.  
+¡Ojo aquí¡ El punto diez (`.10`) significa que estás creando una **Subinterfaz (Router-on-a-Stick)**. Las subinterfaces **solo existen en los Routers** para enrutar VLANs.
+
+Como acabamos de aprender que `port-security` **solo funciona en Switches**, si estás en el switch real o en Packet Tracer, debes entrar al puerto físico limpio sin el punto:
+
+```c
+Switch(config)# interface gig 0/2
+Switch(config-if)# switchport mode access
+Switch(config-if)# switchport access vlan 10
+Switch(config-if)# switchport port-security
+```
+
+_(Nota técnica: ¡Para que los comandos sticky, maximum y violation funcionen, primero debes escribir el comando `switchport port-security` a secas en una línea sola para encender el motor de seguridad!)_
+
+## 📛 **Paso del Detective Global: Analizar el mapa de seguridad (`show port-security`)**
+
+⚡ **Explicación rápida y ejemplo:**  
+Este comando te da una vista aérea de todo el switch. Te dice cuántos puertos tienen el candado activado, cuál es el límite de dispositivos y si hay alguna alerta activa en este instante.
+
+text
+
+```
+Switch# show port-security
+Secure Port  MaxSecureAddr  CurrentAddr  SecurityViolation  Security Action
+                (Count)       (Count)          (Count)
+---------------------------------------------------------------------------
+Gi1/0/15            1             1                  1         Shutdown
+---------------------------------------------------------------------------
+```
+
+Usa el código con precaución.
+
+🧠 **La Lógica de Fondo:**  
+Imagínate que administras un edificio de 48 pisos. No vas a ir a revisar puerta por puerta. Primero miras el tablero central. Este comando es ese tablero. Al lanzarlo, tus ojos van directo a la columna `SecurityViolation`. Si ves un número mayor a `0` (como el `1` del ejemplo), ya sabes instantáneamente que en ese puerto específico hubo un intento de hackeo o un error de conexión.
+
+⚠️ **LA ADVERTENCIA:**
+
+> Si ejecutas este comando y la lista te sale completamente vacía, significa que **ningún puerto del switch está protegido**. Tu red está en peligro total; cualquiera podría llegar a cualquier oficina, conectar un dispositivo y robar datos sin que el switch haga absolutamente nada para detenerlo.
+
+---
+
+## 📛 **Paso del Microscopio: Destripar el puerto afectado**
+
+⚡ **Explicación rápida y ejemplo:**  
+Una vez que viste en el comando anterior que el puerto `Gi1/0/15` tiene una violación, le haces un "zoom" quirúrgico con el segundo comando para ver todos los detalles técnicos de la infracción.
+```c
+Switch# show port-security interface gigabitEthernet 1/0/15
+```
+
+Al darle Enter, Cisco IOS te va a mostrar este desglose detallado. Vamos a analizar las líneas más importantes:
+
+```
+Port Security              : Enabled
+Port Status                : Secure-shutdown  <-- 🚨 ¡EL PUERTO ESTÁ MUERTO!
+Violation Mode             : Shutdown
+Aging Time                 : 0 mins
+Aging Type                 : Absolute
+SecureStatic Address Aging : Disabled
+Maximum MAC Addresses      : 1
+Total MAC Addresses        : 1
+Configured MAC Addresses   : 0
+Sticky MAC Addresses       : 1
+Last Source Address:Vlan   : 001A.A012.BF34:10 <-- 👣 ¡LA HUELLA DEL INTRUSO!
+Security Violation Count   : 1
+```
+
+Usa el código con precaución.
+
+- **Port Security : Enabled**: Confirma que el candado está encendido en este puerto.
+- **Port Status : Secure-shutdown**: ¡Aquí está la prueba de fuego! El puerto no está caído porque el cable esté dañado; está en modo "Muerte Cerebral" por seguridad debido a una infracción (también conocido en los logs como `err-disabled`). El bombillo LED físico de ese puerto en el switch estará apagado o en naranja fijo.
+- **Sticky MAC Addresses : 1**: Significa que el puerto ya se había aprendido y guardado la MAC de la PC original de la oficina.
+    
+- **Last Source Address:Vlan : 001A.A012.BF34:10**: **¡Esta es la prueba reina!** Te dice la dirección MAC exacta de la laptop intrusa que causó el desastre y te confirma que intentó entrar a través de la **VLAN 10**.
+
+🧠 **La Lógica de Fondo:**  
+Este comando existe para que no actúes a ciegas. Si el usuario te llama llorando porque no tiene internet, tú miras esto y le dices: _"Oye, el sistema me dice que desconectaste la computadora de la empresa y conectaste un dispositivo con la MAC 001A.A012.BF34 a las 10:00 AM. ¿Qué conectaste ahí?"_. No hay forma de que te mientan; el switch tiene los registros exactos del hardware.
+
+---
+
+# Prioridad en HSRP? (El truco del Router Fantasma)
+
+Imagina que el Router Izquierdo y el Router Derecho se fusionan para crear un **"Router Fantasma"** (una IP virtual que será la puerta de salida para tus computadoras, que en tu imagen es la `10.100.10.254`).
+
+Las computadoras le envían los datos al fantasma. Pero en el mundo real, solo uno de los dos routers físicos puede procesar esos datos a la vez.
+
+- El router que trabaja se llama **Active (Activo)**.
+- El router que se queda esperando por si el otro explota se llama **Standby (Reserva)**.
+
+¿Cómo deciden quién trabaja y quién descansa? ¡Con la **Prioridad**! El número de prioridad es como el nivel de fuerza o jerarquía de un personaje. **El router que tenga el número de prioridad más alto se convierte en el router Activo (el jefe)**. Por defecto, todos los routers Cisco nacen con una prioridad de 100. Al ponerle **150** al izquierdo, estás obligando a la red a que el izquierdo sea el principal y el derecho (con 100) sea el de respaldo.
+
+---
+
+## 📛 Paso 1: Entrar a la aduana de la habitación 10
+
+- ⚡ **Comando:**
+    
+    ```c
+    interface GigabitEthernet0/2.{numero de la VLAN}
+    ```
+    
+    
+- 🧠 **La Lógica de Fondo:** se estás entrando a una **subinterfaz** del router. Es como crear una "puerta virtual" exclusiva para que los datos de la VLAN 10 (Finanzas) puedan salir hacia otras redes.
+- ⚠️ **LA ADVERTENCIA:** Si entras a la subinterfaz pero olvidas escribir el comando de encapsulamiento (`encapsulation dot1Q 10`) antes de poner IPs o HSRP, el router se confundirá y no sabrá a qué VLAN asignarle esa puerta.
+
+## 📛 Paso 2: Invocar al Router Fantasma
+
+- ⚡ **Comando:** considerando que el numero de IP es uno que ya se definió y esta finaliza en 254 por una razón en especifico 
+    ```c
+    standby 10 ip 10.100.10.254
+    ```
+    
+- ``standby``: Activa el protocolo HSRP en este puerto.
+- ``10``: Es el número de grupo. Debe ser el mismo en el router izquierdo y derecho para que se hablen entre sí.
+- ``ip 10.100.10.254``: Es la IP mágica del "Router Fantasma" considerando que esta no se inventa sino se crea y teniendo encuentra que el numero 254 se puso de esa manera por una razón en especifico .
+- 🧠 **La Lógica de Fondo:** Ambos routers necesitan saber cuál es la IP virtual común que van a defender. Las PCs de la VLAN 10 apuntarán a esta IP como su puerta de enlace (Gateway).
+- ⚠️ **LA ADVERTENCIA:** Si pones un número de grupo diferente en el router derecho (por ejemplo `standby 20`), los routers no se reconocerán, se volverán locos y ambos intentarán ser los jefes, causando un conflicto de IPs en la red.
+
+## 📛 Paso 3: Reclamar el trono de jefe
+
+- ⚡ **Comando:**
+    
+    ```c
+    standby 10 priority 150
+    ```
+    
+    - **standby 10**: Seguimos configurando el grupo 10.
+    - **priority**: El medidor de fuerza/jerarquía.
+    - **150**: El valor asignado (mayor que el 100 por defecto).
+    
+- 🧠 **La Lógica de Fondo:** Le estás diciendo al router izquierdo: _"Tú tienes más nivel que el derecho, toma el control de la red de inmediato"_.
+- ⚠️ **LA ADVERTENCIA:** Si olvidas este comando, ambos routers competirán con la prioridad por defecto (100). En ese caso, el router que tenga la IP física más alta ganará por desempate, lo cual podría hacer que el router derecho termine siendo el principal por accidente.
+
+## 📛 Paso 4: El comando "Quítate que llego yo" (Preempt)
+
+- ⚡ **Comando:**
+    
+    ```c
+    standby 10 preempt
+    ```
+    
+    - **preempt**: Significa "reclamar el control" o "derrocar".
+    
+- 🧠 **La Lógica de Fondo:** Imagina que el router izquierdo se apaga porque se cortó la luz. El router derecho (prioridad 100) toma el control para que no se corte el internet. Cuando el router izquierdo vuelve a encender, ve que el derecho está trabajando. **Si no pones `preempt`, el izquierdo se quedará mirando y no recuperará el trono**. Con `preempt`, el izquierdo dice: _"Ya regresé, tengo prioridad 150, ¡quítate!"_ y vuelve a ser el activo de inmediato.
+- ⚠️ **LA ADVERTENCIA:** Si no configuras `preempt` en el router principal, estás desperdiciando tu hardware de alta prioridad, ya que ante cualquier falla eléctrica temporal, el router de respaldo se quedará con el control para siempre hasta que lo reinicies manualmente.
+
+---
+
+
+# El combo "Mudanza Masiva a la VLAN 10"
+
+⚡ **Explicación rápida y ejemplo:**  
+En lugar de entrar puerto por puerto (perdiendo un montón de tiempo), tu profesor usó un truco de magia (`range`) para configurar 7 puertos de un solo golpe. Los configuró en modo "PC de escritorio" (`mode access`), los amarró a la VLAN 10 y les puso un recordatorio (`description pc`).
+
+```c
+Switch(config)# interface range gigabitEthernet 1/0/1-7
+Switch(config-if-range)# switchport mode access
+Switch(config-if-range)# switchport access vlan 10
+Switch(config-if-range)# description pc
+```
+
+🧠 **La Lógica de Fondo:**  
+El switch por defecto tiene todos sus puertos en la VLAN 1 (la habitación común donde todos se ven con todos). Para aislar el tráfico de Finanzas y que sea seguro, primero debemos decirle al switch qué puertos vamos a modificar (`interface range`), cambiar su comportamiento físico para que solo acepten computadoras y no otros switches (`mode access`), y finalmente cambiarlos de habitación (`access vlan 10`). Al final, la descripción es el "post-it" o etiqueta digital para el ingeniero que revise la red en el futuro.
+
+🔧 **Desarmando el comando palabra por palabra y número por número:**
+
+- `interface range`: Le dice al switch: _"Ojo, no voy a configurar una sola interfaz, voy a aplicarle los mismos comandos a todo un grupo de puertos a la vez"_.
+- `gigabitEthernet 1/0/1-7`: Define el tipo de puerto y el rango exacto. El **1** es el número del switch en el rack (si fuera un stack), el **0** es el módulo, y el **1-7** significa: _"aplícalo desde el puerto 1, pasando por el 2, 3, 4, 5, 6, hasta el 7"_.
+- `switchport mode access`: Configura el puerto en modo de **Acceso**. Esto le dice al chip del switch: _"Por aquí solo se van a conectar dispositivos finales (PCs, laptops, impresoras). No se permiten autopistas troncales (Trunks) aquí"_.
+- `switchport access vlan 10`: Mueve los puertos. Cualquier paquete de datos que entre por los puertos del 1 al 7 se le colocará una "etiqueta invisible" que dice **VLAN 10**. A partir de ese momento, esas PCs solo podrán hablar con otras PCs de la VLAN 10.
+- `description pc`: Guarda una cadena de texto en la memoria. No altera el procesador ni cambia cómo viajan los datos; es puramente un comentario para el administrador que dice: _"Aquí van conectadas computadoras"_.
+
+⚠️ **LA ADVERTENCIA:**
+
+> Si tu profesor metió el comando `switchport access vlan 10`, pero a nadie en la clase se le ocurrió crear previamente la VLAN en la base de datos global del switch (con el comando `vlan 10`), Cisco IOS es tan inteligente que **creará la VLAN 10 automáticamente en ese instante**. Sin embargo, la creará sin nombre (aparecerá como _VLAN0010_). Si olvidas este detalle y en otra parte del laboratorio usas un nombre distinto, podrías generar una confusión enorme en el mapa de red. ¡Lo ideal es crear siempre la VLAN con su nombre (`name FINANZAS`) antes de asignar los puertos!
+
+---
 # Syslog (abreviatura de _System Logging_ o Historial del Sistema)
 
 ```c
@@ -364,6 +845,14 @@ Router# show privilege
 ```
 ⚡ **Explicación rápida y ejemplo:** Este comando solo te arroja una línea de texto en pantalla que te dice en qué nivel de la escala del 0 al 15 estás operando en este instante.
 Lo que te está mostrando ese "15" es tu **rango o nivel de poder actual en ese preciso milisegundo**. Es el espejo que te dice: _"Tú, la persona que está tecleando ahora mismo, tienes nivel 15 (Modo Dios)"_.
+
+# 6_ver HSRP
+
+```c
+Router# show standby brief
+```
+
+
 ## 2_Switch 
 ### 1_El Mapa del Tesoro del Switch (Exclusivo de Switches)
 
